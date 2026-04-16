@@ -9,3 +9,16 @@ class ProjectCreate(BaseModel):
 class JobCreate(BaseModel):
     job_type: str
     mode: str = "auto"
+
+
+class ArtifactLink(BaseModel):
+    id: str
+    label: str
+    href: str
+
+
+class RebuildVersionRead(BaseModel):
+    id: int
+    version_number: int
+    slide_count: int
+    artifacts: list[ArtifactLink]

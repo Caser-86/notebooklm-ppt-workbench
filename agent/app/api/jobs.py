@@ -3,11 +3,16 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, UploadFile, status
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Job
-from app.services.artifacts import artifact_href, ensure_project_artifact_dir
+from app.models import Job, RebuildVersion
+from app.services.artifacts import (
+    artifact_href,
+    artifact_version_href,
+    ensure_project_artifact_dir,
+    ensure_rebuild_version_dir,
+)
 from app.services.reconstruct.editable_rebuild import build_editable_rebuild
 from app.services.reconstruct.display_clone import build_display_clone
 from app.schemas import JobCreate
@@ -61,8 +66,15 @@ async def rebuild_manual_export(
     project_id: int,
     slide_images: list[UploadFile] = File(...),
     ocr_json: UploadFile | None = File(default=None),
+    session: Session = Depends(get_session),
 ):
-    artifact_dir = ensure_project_artifact_dir(project_id)
+    current_max = session.exec(
+        select(RebuildVersion.version_number)
+        .where(RebuildVersion.project_id == project_id)
+        .order_by(RebuildVersion.version_number.desc())
+    ).first()
+    version_number = (current_max or 0) + 1
+    artifact_dir = ensure_rebuild_version_dir(project_id, version_number)
     saved_slide_paths: list[Path] = []
 
     for image in slide_images:
@@ -81,10 +93,29 @@ async def rebuild_manual_export(
     build_display_clone(saved_slide_paths, display_path)
     build_editable_rebuild(ocr_blocks, editable_path)
 
+    rebuild = RebuildVersion(
+        project_id=project_id,
+        version_number=version_number,
+        slide_count=len(saved_slide_paths),
+        display_clone_path=str(display_path),
+        editable_rebuild_path=str(editable_path),
+    )
+    session.add(rebuild)
+    session.commit()
+
     return {
         "project_id": project_id,
+        "version_number": version_number,
         "artifacts": [
-            {"id": "display-clone", "label": "Display clone", "href": artifact_href(project_id, display_path.name)},
-            {"id": "editable-rebuild", "label": "Editable rebuild", "href": artifact_href(project_id, editable_path.name)},
+            {
+                "id": "display-clone",
+                "label": "Display clone",
+                "href": artifact_version_href(project_id, version_number, display_path.name),
+            },
+            {
+                "id": "editable-rebuild",
+                "label": "Editable rebuild",
+                "href": artifact_version_href(project_id, version_number, editable_path.name),
+            },
         ],
     }

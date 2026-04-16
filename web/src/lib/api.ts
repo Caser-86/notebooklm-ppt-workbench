@@ -1,10 +1,42 @@
-import type { LaunchJobResponse, ManualExportRebuildResponse, PromptPreset } from "./types";
+import type {
+  LaunchJobResponse,
+  ManualExportRebuildResponse,
+  ProjectSummary,
+  PromptPreset,
+  RebuildVersion,
+} from "./types";
 
 const API_BASE = "http://127.0.0.1:8000";
 
 export async function fetchPromptPresets(): Promise<PromptPreset[]> {
   const response = await fetch(`${API_BASE}/prompt-presets`);
   return response.json();
+}
+
+export async function fetchProjects(): Promise<ProjectSummary[]> {
+  const response = await fetch(`${API_BASE}/projects`);
+  return response.json();
+}
+
+export async function createProject(title: string): Promise<ProjectSummary> {
+  const response = await fetch(`${API_BASE}/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, preferred_language: "zh-CN" }),
+  });
+  return response.json();
+}
+
+export async function fetchProjectRebuilds(projectId: number): Promise<RebuildVersion[]> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/rebuilds`);
+  const payload = (await response.json()) as RebuildVersion[];
+  return payload.map((version) => ({
+    ...version,
+    artifacts: version.artifacts.map((artifact) => ({
+      ...artifact,
+      href: artifact.href.startsWith("http") ? artifact.href : `${API_BASE}${artifact.href}`,
+    })),
+  }));
 }
 
 export async function launchGenerateJob(

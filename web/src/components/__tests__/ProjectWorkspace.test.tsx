@@ -5,7 +5,7 @@ import { ProjectWorkspace } from "../ProjectWorkspace";
 
 describe("ProjectWorkspace", () => {
   it("shows the manual NotebookLM handoff steps", () => {
-    render(<ProjectWorkspace />);
+    render(<ProjectWorkspace projectId={null} />);
 
     expect(screen.getByText("Semi-automatic mode")).toBeInTheDocument();
     expect(
@@ -20,18 +20,27 @@ describe("ProjectWorkspace", () => {
 
   it("uploads exported files and shows rebuilt downloads from the agent response", async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn().mockResolvedValue({
-      json: async () => ({
-        artifacts: [
-          { id: "display-clone", label: "Display clone", href: "/artifacts/1/display-clone.pptx" },
-          { id: "editable-rebuild", label: "Editable rebuild", href: "/artifacts/1/editable-rebuild.pptx" },
-        ],
-      }),
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return {
+          json: async () => [],
+        };
+      }
+      return {
+        json: async () => ({
+          version_number: 1,
+          artifacts: [
+            { id: "display-clone", label: "Display clone", href: "/artifacts/1/rebuild-001/display-clone.pptx" },
+            { id: "editable-rebuild", label: "Editable rebuild", href: "/artifacts/1/rebuild-001/editable-rebuild.pptx" },
+          ],
+        }),
+      };
     });
 
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<ProjectWorkspace />);
+    render(<ProjectWorkspace projectId={1} />);
 
     const slideInput = screen.getByLabelText("Exported slide images");
     const file = new File(["slide"], "slide-1.png", { type: "image/png" });
@@ -39,15 +48,14 @@ describe("ProjectWorkspace", () => {
     await user.upload(slideInput, file);
     await user.click(screen.getByRole("button", { name: "Mark export ready" }));
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(await screen.findByRole("link", { name: "Display clone" })).toHaveAttribute(
-      "href",
-      "http://127.0.0.1:8000/artifacts/1/display-clone.pptx",
-    );
-    expect(screen.getByRole("link", { name: "Editable rebuild" })).toHaveAttribute(
-      "href",
-      "http://127.0.0.1:8000/artifacts/1/editable-rebuild.pptx",
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const displayLinks = await screen.findAllByRole("link", { name: "Display clone" });
+    const editableLinks = screen.getAllByRole("link", { name: "Editable rebuild" });
+
+    expect(displayLinks).toHaveLength(2);
+    expect(editableLinks).toHaveLength(2);
+    expect(displayLinks[0]).toHaveAttribute("href", "http://127.0.0.1:8000/artifacts/1/rebuild-001/display-clone.pptx");
+    expect(editableLinks[0]).toHaveAttribute("href", "http://127.0.0.1:8000/artifacts/1/rebuild-001/editable-rebuild.pptx");
 
     vi.unstubAllGlobals();
   });

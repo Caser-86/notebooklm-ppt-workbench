@@ -22,3 +22,13 @@ def test_create_job_returns_draft_status():
 
     assert response.status_code == 201
     assert response.json()["status"] == "draft"
+
+
+def test_list_projects_returns_created_projects():
+    client = TestClient(app)
+    created = client.post("/projects", json={"title": "History deck", "preferred_language": "zh-CN"}).json()
+
+    response = client.get("/projects")
+
+    assert response.status_code == 200
+    assert any(project["id"] == created["id"] and project["title"] == "History deck" for project in response.json())

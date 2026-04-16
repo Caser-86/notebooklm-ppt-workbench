@@ -10,6 +10,12 @@ export type DownloadArtifact = {
   href: string;
 };
 
+export type ProjectSummary = {
+  id: number;
+  title: string;
+  preferred_language: string;
+};
+
 export type LaunchJobResponse = {
   project_id: number;
   status: "ready_to_generate";
@@ -18,5 +24,13 @@ export type LaunchJobResponse = {
 
 export type ManualExportRebuildResponse = {
   project_id: number;
+  version_number: number;
+  artifacts: DownloadArtifact[];
+};
+
+export type RebuildVersion = {
+  id: number;
+  version_number: number;
+  slide_count: number;
   artifacts: DownloadArtifact[];
 };

@@ -9,6 +9,16 @@ describe("ArtifactGallery", () => {
           { id: "1", label: "Display clone", href: "/display-clone.pptx" },
           { id: "2", label: "Editable rebuild", href: "/editable-rebuild.pptx" },
         ]}
+        rebuilds={[
+          {
+            id: "history-1",
+            version_number: 1,
+            artifacts: [
+              { id: "1", label: "Display clone", href: "/display-clone.pptx" },
+              { id: "2", label: "Editable rebuild", href: "/editable-rebuild.pptx" },
+            ],
+          },
+        ]}
       />,
     );
 
@@ -16,7 +26,9 @@ describe("ArtifactGallery", () => {
     expect(
       screen.getByText("These files appear after you export the deck from NotebookLM and return here for rebuild."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Display clone" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Editable rebuild" })).toBeInTheDocument();
+    expect(screen.getByText("Recent versions")).toBeInTheDocument();
+    expect(screen.getByText("Version 1")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Display clone" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "Editable rebuild" })).toHaveLength(2);
   });
 });

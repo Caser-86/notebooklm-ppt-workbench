@@ -8,6 +8,7 @@ from app.main import app
 
 def test_manual_export_rebuild_returns_download_artifacts():
     client = TestClient(app)
+    project = client.post("/projects", json={"title": "Rebuild history", "preferred_language": "zh-CN"}).json()
     slide_1 = Path("tests/fixtures/slides/slide-1.png")
     slide_2 = Path("tests/fixtures/slides/slide-2.png")
     ocr = Path("tests/fixtures/ocr_blocks.json")
@@ -18,7 +19,7 @@ def test_manual_export_rebuild_returns_download_artifacts():
         ocr.open("rb") as ocr_file,
     ):
         response = client.post(
-            "/projects/1/rebuild/manual-export",
+            f"/projects/{project['id']}/rebuild/manual-export",
             files=[
                 ("slide_images", ("slide-1.png", slide_1_file, "image/png")),
                 ("slide_images", ("slide-2.png", slide_2_file, "image/png")),
@@ -28,7 +29,15 @@ def test_manual_export_rebuild_returns_download_artifacts():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["project_id"] == 1
+    assert body["project_id"] == project["id"]
+    assert body["version_number"] == 1
     assert [artifact["label"] for artifact in body["artifacts"]] == ["Display clone", "Editable rebuild"]
-    assert body["artifacts"][0]["href"].endswith("/artifacts/1/display-clone.pptx")
-    assert body["artifacts"][1]["href"].endswith("/artifacts/1/editable-rebuild.pptx")
+    assert body["artifacts"][0]["href"].endswith(f"/artifacts/{project['id']}/rebuild-001/display-clone.pptx")
+    assert body["artifacts"][1]["href"].endswith(f"/artifacts/{project['id']}/rebuild-001/editable-rebuild.pptx")
+
+    history_response = client.get(f"/projects/{project['id']}/rebuilds")
+
+    assert history_response.status_code == 200
+    history = history_response.json()
+    assert history[0]["version_number"] == 1
+    assert history[0]["artifacts"][0]["href"].endswith(f"/artifacts/{project['id']}/rebuild-001/display-clone.pptx")

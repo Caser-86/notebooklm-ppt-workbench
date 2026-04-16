@@ -1,27 +1,51 @@
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { ArtifactGallery } from "./ArtifactGallery";
 import { JobTimeline } from "./JobTimeline";
 import { PromptStudio } from "./PromptStudio";
 import { SourceIntakePanel } from "./SourceIntakePanel";
-import { submitManualExportRebuild } from "../lib/api";
-import type { DownloadArtifact } from "../lib/types";
+import { fetchProjectRebuilds, submitManualExportRebuild } from "../lib/api";
+import type { DownloadArtifact, RebuildVersion } from "../lib/types";
 
-export function ProjectWorkspace() {
+export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [brief, setBrief] = useState("Create a launch deck");
   const [presetId, setPresetId] = useState("default");
   const [value, setValue] = useState("Start here");
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
+  const [rebuilds, setRebuilds] = useState<RebuildVersion[]>([]);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!projectId) {
+      setArtifacts([]);
+      setRebuilds([]);
+      return;
+    }
+
+    let isMounted = true;
+    void fetchProjectRebuilds(projectId).then((history) => {
+      if (!isMounted) {
+        return;
+      }
+      startTransition(() => {
+        setRebuilds(history);
+        setArtifacts(history[0]?.artifacts ?? []);
+      });
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
 
   return (
     <main className="workspace">
       <header className="workspace-hero">
         <p className="eyebrow">Workspace</p>
         <h2>Workspace</h2>
-        <p>No project selected</p>
+        <p>{projectId ? `Project ${projectId}` : "No project selected"}</p>
       </header>
       <section className="workspace-section workspace-section--intro">
         <h3>Semi-automatic mode</h3>
@@ -72,14 +96,26 @@ export function ProjectWorkspace() {
             type="button"
             disabled={slideFiles.length === 0 || isPending}
             onClick={async () => {
+              if (!projectId) {
+                return;
+              }
               const formData = new FormData();
               slideFiles.forEach((file) => formData.append("slide_images", file));
               if (ocrFile) {
                 formData.append("ocr_json", ocrFile);
               }
-              const payload = await submitManualExportRebuild(1, formData);
+              const payload = await submitManualExportRebuild(projectId, formData);
               startTransition(() => {
                 setArtifacts(payload.artifacts);
+                setRebuilds((current) => [
+                  {
+                    id: payload.version_number,
+                    version_number: payload.version_number,
+                    slide_count: slideFiles.length,
+                    artifacts: payload.artifacts,
+                  },
+                  ...current,
+                ]);
               });
             }}
           >
@@ -88,7 +124,7 @@ export function ProjectWorkspace() {
         </div>
       </section>
       <JobTimeline status="needs_attention" attentionReason="browser_login_required" />
-      <ArtifactGallery artifacts={artifacts} />
+      <ArtifactGallery artifacts={artifacts} rebuilds={rebuilds} />
     </main>
   );
 }
