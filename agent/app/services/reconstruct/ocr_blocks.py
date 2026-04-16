@@ -55,7 +55,18 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
         for block in slide_blocks:
             if block.get("content_type") == "image":
                 continue
-            if current_line is None or abs(block["y"] - current_line["y"]) > y_threshold:
+            horizontal_gap = (
+                None
+                if current_line is None
+                else block["x"] - (current_line["x"] + current_line["width"])
+            )
+            same_line_and_close = (
+                current_line is not None
+                and abs(block["y"] - current_line["y"]) <= y_threshold
+                and horizontal_gap is not None
+                and horizontal_gap <= 0.6
+            )
+            if not same_line_and_close:
                 current_line = {
                     "slide_index": slide_index,
                     "content_type": "text",

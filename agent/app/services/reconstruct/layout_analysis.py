@@ -1,6 +1,50 @@
 from app.services.reconstruct.ocr_blocks import group_ocr_blocks_by_slide_lines
 
 
+def classify_captions(slide_blocks: list[dict]) -> list[dict]:
+    classified_blocks: list[dict] = []
+    image_blocks = [block for block in slide_blocks if block["text_role"] == "image"]
+
+    for block in slide_blocks:
+        adjusted = dict(block)
+        if adjusted["text_role"] == "body":
+            for image in image_blocks:
+                near_image_bottom = image["y"] + image["height"] <= adjusted["y"] <= image["y"] + image["height"] + 0.55
+                overlaps_image_width = adjusted["x"] < image["x"] + image["width"] and adjusted["x"] + adjusted["width"] > image["x"]
+                if adjusted["font_size"] <= 14 and near_image_bottom and overlaps_image_width:
+                    adjusted["text_role"] = "caption"
+                    adjusted["x"] = image["x"]
+                    adjusted["width"] = min(adjusted["width"], image["width"])
+                    break
+
+        classified_blocks.append(adjusted)
+
+    return classified_blocks
+
+
+def assign_column_indices(slide_blocks: list[dict]) -> list[dict]:
+    indexed_blocks: list[dict] = []
+    column_starts: list[float] = []
+
+    for block in slide_blocks:
+        adjusted = dict(block)
+        if adjusted["text_role"] in {"body", "list_item", "caption"}:
+            matched_index = None
+            for index, start in enumerate(column_starts):
+                if abs(adjusted["x"] - start) <= 0.5:
+                    matched_index = index
+                    break
+            if matched_index is None:
+                column_starts.append(adjusted["x"])
+                column_starts.sort()
+                matched_index = column_starts.index(adjusted["x"])
+            adjusted["column_index"] = matched_index
+
+        indexed_blocks.append(adjusted)
+
+    return indexed_blocks
+
+
 def apply_vertical_spacing(slide_blocks: list[dict]) -> list[dict]:
     adjusted_blocks: list[dict] = []
     active_list_indent: float | None = None
@@ -79,6 +123,6 @@ def analyze_rebuild_layout(raw_blocks: list[dict]) -> list[list[dict]]:
     analyzed_slides: list[list[dict]] = []
 
     for slide_blocks in group_ocr_blocks_by_slide_lines(raw_blocks):
-        analyzed_slides.append(merge_consecutive_text_blocks(apply_vertical_spacing(slide_blocks)))
+        analyzed_slides.append(assign_column_indices(merge_consecutive_text_blocks(classify_captions(apply_vertical_spacing(slide_blocks)))))
 
     return analyzed_slides
