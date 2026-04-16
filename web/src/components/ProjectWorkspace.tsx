@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useState, useTransition } from "react";
 
 import { ArtifactGallery } from "./ArtifactGallery";
 import { JobTimeline } from "./JobTimeline";
 import { PromptStudio } from "./PromptStudio";
 import { SourceIntakePanel } from "./SourceIntakePanel";
+import { submitManualExportRebuild } from "../lib/api";
+import type { DownloadArtifact } from "../lib/types";
 
 export function ProjectWorkspace() {
   const [brief, setBrief] = useState("Create a launch deck");
   const [presetId, setPresetId] = useState("default");
   const [value, setValue] = useState("Start here");
+  const [slideFiles, setSlideFiles] = useState<File[]>([]);
+  const [ocrFile, setOcrFile] = useState<File | null>(null);
+  const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
+  const [isPending, startTransition] = useTransition();
 
   return (
     <main className="workspace">
@@ -36,22 +42,53 @@ export function ProjectWorkspace() {
           <p>Paste the prompt into NotebookLM and generate the deck there.</p>
           <p>Export the deck from NotebookLM, then return here for rebuild and download.</p>
         </div>
+        <label>
+          Exported slide images
+          <input
+            type="file"
+            multiple
+            accept=".png,.jpg,.jpeg"
+            onChange={(event) => setSlideFiles(Array.from(event.target.files ?? []))}
+          />
+        </label>
+        <label>
+          OCR JSON (optional)
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={(event) => setOcrFile(event.target.files?.[0] ?? null)}
+          />
+        </label>
         <div className="handoff-actions">
-          <button className="primary-action" type="button">
+          <button
+            className="primary-action"
+            type="button"
+            onClick={() => window.open("https://notebooklm.google.com/", "_blank", "noopener")}
+          >
             Open NotebookLM
           </button>
-          <button className="secondary-action" type="button">
-            Mark export ready
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={slideFiles.length === 0 || isPending}
+            onClick={async () => {
+              const formData = new FormData();
+              slideFiles.forEach((file) => formData.append("slide_images", file));
+              if (ocrFile) {
+                formData.append("ocr_json", ocrFile);
+              }
+              const payload = await submitManualExportRebuild(1, formData);
+              startTransition(() => {
+                setArtifacts(payload.artifacts);
+              });
+            }}
+          >
+            {isPending ? "Rebuilding..." : "Mark export ready"}
           </button>
         </div>
       </section>
       <JobTimeline status="needs_attention" attentionReason="browser_login_required" />
-      <ArtifactGallery
-        artifacts={[
-          { id: "1", label: "Display clone", href: "/display-clone.pptx" },
-          { id: "2", label: "Editable rebuild", href: "/editable-rebuild.pptx" },
-        ]}
-      />
+      <ArtifactGallery artifacts={artifacts} />
     </main>
   );
 }

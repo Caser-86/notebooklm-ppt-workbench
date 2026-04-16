@@ -1,4 +1,6 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { vi } from "vitest";
 import { ProjectWorkspace } from "../ProjectWorkspace";
 
 describe("ProjectWorkspace", () => {
@@ -14,5 +16,39 @@ describe("ProjectWorkspace", () => {
     expect(screen.getByText("Export the deck from NotebookLM, then return here for rebuild and download.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open NotebookLM" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark export ready" })).toBeInTheDocument();
+  });
+
+  it("uploads exported files and shows rebuilt downloads from the agent response", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn().mockResolvedValue({
+      json: async () => ({
+        artifacts: [
+          { id: "display-clone", label: "Display clone", href: "/artifacts/1/display-clone.pptx" },
+          { id: "editable-rebuild", label: "Editable rebuild", href: "/artifacts/1/editable-rebuild.pptx" },
+        ],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace />);
+
+    const slideInput = screen.getByLabelText("Exported slide images");
+    const file = new File(["slide"], "slide-1.png", { type: "image/png" });
+
+    await user.upload(slideInput, file);
+    await user.click(screen.getByRole("button", { name: "Mark export ready" }));
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("link", { name: "Display clone" })).toHaveAttribute(
+      "href",
+      "http://127.0.0.1:8000/artifacts/1/display-clone.pptx",
+    );
+    expect(screen.getByRole("link", { name: "Editable rebuild" })).toHaveAttribute(
+      "href",
+      "http://127.0.0.1:8000/artifacts/1/editable-rebuild.pptx",
+    );
+
+    vi.unstubAllGlobals();
   });
 });

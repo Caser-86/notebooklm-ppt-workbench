@@ -1,4 +1,4 @@
-import type { LaunchJobResponse, PromptPreset } from "./types";
+import type { LaunchJobResponse, ManualExportRebuildResponse, PromptPreset } from "./types";
 
 const API_BASE = "http://127.0.0.1:8000";
 
@@ -17,4 +17,19 @@ export async function launchGenerateJob(
     body: JSON.stringify(payload),
   });
   return response.json();
+}
+
+export async function submitManualExportRebuild(projectId: number, formData: FormData): Promise<ManualExportRebuildResponse> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/rebuild/manual-export`, {
+    method: "POST",
+    body: formData,
+  });
+  const payload = (await response.json()) as ManualExportRebuildResponse;
+  return {
+    ...payload,
+    artifacts: payload.artifacts.map((artifact) => ({
+      ...artifact,
+      href: artifact.href.startsWith("http") ? artifact.href : `${API_BASE}${artifact.href}`,
+    })),
+  };
 }

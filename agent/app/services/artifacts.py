@@ -1,7 +1,13 @@
 from pathlib import Path
 
+ARTIFACTS_ROOT = Path(__file__).resolve().parents[2] / "data" / "artifacts"
+
 
 def ensure_project_artifact_dir(project_id: int) -> Path:
-    path = Path("agent/data/artifacts") / str(project_id)
+    path = ARTIFACTS_ROOT / str(project_id)
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def artifact_href(project_id: int, filename: str) -> str:
+    return f"/artifacts/{project_id}/{filename}"

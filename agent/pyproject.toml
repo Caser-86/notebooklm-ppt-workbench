@@ -11,6 +11,7 @@ dependencies = [
   "uvicorn>=0.35,<0.36",
   "sqlmodel>=0.0.22,<0.0.23",
   "pydantic-settings>=2.10,<2.11",
+  "python-multipart>=0.0.26,<0.1",
   "httpx>=0.28,<0.29",
   "beautifulsoup4>=4.12,<4.13",
   "faster-whisper>=1.1,<1.2",
