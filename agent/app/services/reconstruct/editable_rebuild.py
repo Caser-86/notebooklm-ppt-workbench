@@ -39,7 +39,7 @@ def apply_vertical_spacing(slide_blocks: list[dict]) -> list[dict]:
     return adjusted_blocks
 
 
-def merge_consecutive_body_blocks(slide_blocks: list[dict]) -> list[dict]:
+def merge_consecutive_text_blocks(slide_blocks: list[dict]) -> list[dict]:
     merged_blocks: list[dict] = []
 
     for block in slide_blocks:
@@ -48,14 +48,14 @@ def merge_consecutive_body_blocks(slide_blocks: list[dict]) -> list[dict]:
 
         if merged_blocks:
             previous = merged_blocks[-1]
-            same_body_flow = (
-                previous["text_role"] == "body"
-                and current["text_role"] == "body"
+            same_text_flow = (
+                previous["text_role"] in {"body", "list_item"}
+                and current["text_role"] == previous["text_role"]
                 and abs(previous["x"] - current["x"]) <= 0.12
                 and abs(previous["width"] - current["width"]) <= 0.6
                 and abs(previous["font_size"] - current["font_size"]) <= 1.0
             )
-            if same_body_flow:
+            if same_text_flow:
                 previous["paragraphs"].append(dict(block))
                 bottom_edge = max(previous["y"] + previous["height"], current["y"] + current["height"])
                 previous["height"] = bottom_edge - previous["y"]
@@ -74,7 +74,7 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
 
     for slide_blocks in group_ocr_blocks_by_slide_lines(raw_blocks):
         slide = presentation.slides.add_slide(presentation.slide_layouts[6])
-        for block in merge_consecutive_body_blocks(apply_vertical_spacing(slide_blocks)):
+        for block in merge_consecutive_text_blocks(apply_vertical_spacing(slide_blocks)):
             textbox = slide.shapes.add_textbox(
                 left=Inches(block["x"]),
                 top=Inches(block["y"]),

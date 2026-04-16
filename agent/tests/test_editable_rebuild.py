@@ -107,13 +107,11 @@ def test_build_editable_rebuild_keeps_consecutive_list_items_on_same_indent(tmp_
 
     presentation = Presentation(output_path)
     shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+    list_shape = shapes_with_text[1]
+    list_paragraphs = [paragraph for paragraph in list_shape.text_frame.paragraphs if paragraph.text.strip()]
 
-    first_item_shape = shapes_with_text[1]
-    second_item_shape = shapes_with_text[2]
-
-    assert first_item_shape.text_frame.paragraphs[0].level == 1
-    assert second_item_shape.text_frame.paragraphs[0].level == 1
-    assert second_item_shape.left == first_item_shape.left
+    assert len(shapes_with_text) == 2
+    assert [paragraph.level for paragraph in list_paragraphs] == [1, 1]
 
 
 def test_build_editable_rebuild_caps_body_width_for_readability(tmp_path):
@@ -160,3 +158,23 @@ def test_build_editable_rebuild_merges_consecutive_body_blocks_into_one_text_fra
         "We launched three pilots in Southeast Asia.",
         "Each pilot now has local distribution support.",
     ]
+
+
+def test_build_editable_rebuild_merges_consecutive_list_items_into_one_text_frame(tmp_path):
+    blocks = [
+        {"text": "Execution plan", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 30},
+        {"text": "- Confirm export", "slide_index": 0, "x": 1.2, "y": 2.0, "width": 4.2, "height": 0.45, "font_size": 18},
+        {"text": "- Trigger rebuild", "slide_index": 0, "x": 1.44, "y": 2.5, "width": 4.0, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-list-paragraphs.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+    list_shape = shapes_with_text[1]
+    list_paragraphs = [paragraph for paragraph in list_shape.text_frame.paragraphs if paragraph.text.strip()]
+
+    assert len(shapes_with_text) == 2
+    assert [paragraph.text for paragraph in list_paragraphs] == ["Confirm export", "Trigger rebuild"]
+    assert [paragraph.level for paragraph in list_paragraphs] == [1, 1]
