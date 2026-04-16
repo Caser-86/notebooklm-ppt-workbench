@@ -2,6 +2,8 @@
 
 Personal workspace for generating NotebookLM slide decks and rebuilding them into editable PowerPoint outputs.
 
+See `docs/DELIVERY.md` for the current project handoff, usage flow, and next-step recommendations.
+
 ## Run locally
 
 ### Agent
