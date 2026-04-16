@@ -434,6 +434,17 @@ describe("ProjectWorkspace", () => {
     expect(compareQueries.getByText("No added sources in this compare.")).toBeInTheDocument();
     expect(compareQueries.getByText("No removed sources in this compare.")).toBeInTheDocument();
 
+    await user.click(compareQueries.getByRole("button", { name: "Audio" }));
+    await user.click(compareQueries.getByRole("button", { name: "Use compare summary in prompt" }));
+
+    const promptInput = screen.getByLabelText("Generation prompt");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("Compare prompt");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("Source compare summary");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("Filter: Audio");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("Added in Revision 3");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("+ Audio: D:/media/voice.mp3");
+    expect((promptInput as HTMLTextAreaElement).value).not.toContain("+ URL: https://example.com/roadmap");
+
     vi.unstubAllGlobals();
   });
 });

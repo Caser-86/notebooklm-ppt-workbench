@@ -64,6 +64,46 @@ function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision,
   );
 }
 
+function buildSourceCompareSummary({
+  newer,
+  older,
+  categoryFilter,
+  changesOnly,
+}: {
+  newer?: SourceRevision;
+  older?: SourceRevision;
+  categoryFilter: CompareCategoryFilter;
+  changesOnly: boolean;
+}) {
+  if (!newer || !older) {
+    return "";
+  }
+
+  const compareDiffs = buildSourceCompareDiffs(newer, older, categoryFilter);
+  const filterLabel = categoryFilter === "all"
+    ? "All"
+    : sourceCategories.find(({ key }) => key === categoryFilter)?.heading ?? "All";
+
+  const addedSection = compareDiffs.added.length > 0
+    ? compareDiffs.added.join("\n")
+    : "No added sources in this compare.";
+  const removedSection = compareDiffs.removed.length > 0
+    ? compareDiffs.removed.join("\n")
+    : "No removed sources in this compare.";
+
+  return [
+    "Source compare summary",
+    `Newer revision: ${newer.revision_number}`,
+    `Against revision: ${older.revision_number}`,
+    `Filter: ${filterLabel}`,
+    `Changes only: ${changesOnly ? "On" : "Off"}`,
+    `Added in Revision ${newer.revision_number}:`,
+    addedSection,
+    `Removed from Revision ${older.revision_number}:`,
+    removedSection,
+  ].join("\n");
+}
+
 function filterSourceManifest(
   revision: SourceRevision,
   counterpart?: SourceRevision,
@@ -396,6 +436,12 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                   const newerRevision = sourceHistory.find((revision) => revision.id === compareNewerRevisionId);
                   const olderRevision = sourceHistory.find((revision) => revision.id === compareOlderRevisionId);
                   const compareDiffs = buildSourceCompareDiffs(newerRevision, olderRevision, compareCategoryFilter);
+                  const compareSummary = buildSourceCompareSummary({
+                    newer: newerRevision,
+                    older: olderRevision,
+                    categoryFilter: compareCategoryFilter,
+                    changesOnly: showCompareChangesOnly,
+                  });
 
                   if (!newerRevision || !olderRevision) {
                     return null;
@@ -403,6 +449,21 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
 
                   return (
                     <>
+                      <div className="handoff-actions">
+                        <button
+                          className="secondary-action"
+                          type="button"
+                          onClick={() => {
+                            setValue((currentValue) =>
+                              currentValue.trim()
+                                ? `${currentValue}\n\n${compareSummary}`
+                                : compareSummary,
+                            );
+                          }}
+                        >
+                          Use compare summary in prompt
+                        </button>
+                      </div>
                       <div className="source-compare-groups">
                         <div className="source-compare-group">
                           <h5>{`Added in Revision ${newerRevision.revision_number}`}</h5>
