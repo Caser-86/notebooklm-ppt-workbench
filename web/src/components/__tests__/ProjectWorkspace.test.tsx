@@ -27,6 +27,19 @@ describe("ProjectWorkspace", () => {
           json: async () => [],
         };
       }
+      if (url.endsWith("/projects/1")) {
+        return {
+          json: async () => ({
+            id: 1,
+            title: "Project 1",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Create a launch deck",
+            prompt_draft: "Start here",
+            source_manifest: { urls: [] },
+          }),
+        };
+      }
       return {
         json: async () => ({
           version_number: 1,
@@ -48,7 +61,7 @@ describe("ProjectWorkspace", () => {
     await user.upload(slideInput, file);
     await user.click(screen.getByRole("button", { name: "Mark export ready" }));
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     const displayLinks = await screen.findAllByRole("link", { name: "Display clone" });
     const editableLinks = screen.getAllByRole("link", { name: "Editable rebuild" });
 
@@ -56,6 +69,101 @@ describe("ProjectWorkspace", () => {
     expect(editableLinks).toHaveLength(2);
     expect(displayLinks[0]).toHaveAttribute("href", "http://127.0.0.1:8000/artifacts/1/rebuild-001/display-clone.pptx");
     expect(editableLinks[0]).toHaveAttribute("href", "http://127.0.0.1:8000/artifacts/1/rebuild-001/editable-rebuild.pptx");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("loads project detail fields from the backend", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.endsWith("/projects/3")) {
+        return {
+          json: async () => ({
+            id: 3,
+            title: "Growth deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Loaded brief",
+            prompt_draft: "Loaded prompt",
+            source_manifest: { urls: ["https://example.com/one", "https://example.com/two"] },
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={3} />);
+
+    expect(await screen.findByDisplayValue("Loaded brief")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Loaded prompt")).toBeInTheDocument();
+    expect(screen.getByLabelText("Source links")).toHaveValue("https://example.com/one\nhttps://example.com/two");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("saves project detail fields back to the backend", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.endsWith("/projects/4") && (!init || init.method === undefined)) {
+        return {
+          json: async () => ({
+            id: 4,
+            title: "Ops deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Original brief",
+            prompt_draft: "Original prompt",
+            source_manifest: { urls: ["https://example.com/start"] },
+          }),
+        };
+      }
+      if (url.endsWith("/projects/4") && init?.method === "PUT") {
+        return {
+          json: async () => ({
+            id: 4,
+            title: "Ops deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Updated brief",
+            prompt_draft: "Updated prompt",
+            source_manifest: { urls: ["https://example.com/updated"] },
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={4} />);
+
+    const briefInput = await screen.findByDisplayValue("Original brief");
+    const promptInput = screen.getByDisplayValue("Original prompt");
+    const sourceLinksInput = screen.getByDisplayValue("https://example.com/start");
+
+    await user.clear(briefInput);
+    await user.type(briefInput, "Updated brief");
+    await user.clear(promptInput);
+    await user.type(promptInput, "Updated prompt");
+    await user.clear(sourceLinksInput);
+    await user.type(sourceLinksInput, "https://example.com/updated");
+    await user.click(screen.getByRole("button", { name: "Save project details" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://127.0.0.1:8000/projects/4",
+      expect.objectContaining({
+        method: "PUT",
+      }),
+    );
 
     vi.unstubAllGlobals();
   });

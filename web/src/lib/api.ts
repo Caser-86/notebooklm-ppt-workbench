@@ -1,6 +1,7 @@
 import type {
   LaunchJobResponse,
   ManualExportRebuildResponse,
+  ProjectDetail,
   ProjectSummary,
   PromptPreset,
   RebuildVersion,
@@ -23,6 +24,23 @@ export async function createProject(title: string): Promise<ProjectSummary> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, preferred_language: "zh-CN" }),
+  });
+  return response.json();
+}
+
+export async function fetchProjectDetail(projectId: number): Promise<ProjectDetail> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}`);
+  return response.json();
+}
+
+export async function updateProjectDetail(
+  projectId: number,
+  payload: { brief: string; prompt_draft: string; source_manifest: { urls: string[] } },
+): Promise<ProjectDetail> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
   return response.json();
 }

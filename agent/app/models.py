@@ -9,6 +9,9 @@ class Project(SQLModel, table=True):
     title: str
     preferred_language: str = "zh-CN"
     preferred_style: str = "default"
+    brief: str = ""
+    prompt_draft: str = ""
+    source_manifest_json: str = "{}"
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

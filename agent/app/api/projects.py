@@ -1,3 +1,5 @@
+import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, status
@@ -6,7 +8,7 @@ from sqlmodel import Session, select
 
 from app.db import get_session
 from app.models import Project, RebuildVersion
-from app.schemas import ArtifactLink, ProjectCreate, RebuildVersionRead
+from app.schemas import ArtifactLink, ProjectCreate, ProjectDetailRead, ProjectUpdate, RebuildVersionRead
 from app.services.artifacts import artifact_version_href
 from app.services.source_ingest import build_source_bundle
 
@@ -35,6 +37,43 @@ def create_project(payload: ProjectCreate, session: Session = Depends(get_sessio
 def list_projects(session: Session = Depends(get_session)) -> list[Project]:
     statement = select(Project).order_by(Project.created_at.desc())
     return list(session.exec(statement))
+
+
+@router.get("/projects/{project_id}", response_model=ProjectDetailRead)
+def get_project(project_id: int, session: Session = Depends(get_session)) -> ProjectDetailRead:
+    project = session.get(Project, project_id)
+    assert project is not None
+    return ProjectDetailRead(
+        id=project.id or 0,
+        title=project.title,
+        preferred_language=project.preferred_language,
+        preferred_style=project.preferred_style,
+        brief=project.brief,
+        prompt_draft=project.prompt_draft,
+        source_manifest=json.loads(project.source_manifest_json or "{}"),
+    )
+
+
+@router.put("/projects/{project_id}", response_model=ProjectDetailRead)
+def update_project(project_id: int, payload: ProjectUpdate, session: Session = Depends(get_session)) -> ProjectDetailRead:
+    project = session.get(Project, project_id)
+    assert project is not None
+    project.brief = payload.brief
+    project.prompt_draft = payload.prompt_draft
+    project.source_manifest_json = json.dumps(payload.source_manifest)
+    project.updated_at = datetime.now(UTC)
+    session.add(project)
+    session.commit()
+    session.refresh(project)
+    return ProjectDetailRead(
+        id=project.id or 0,
+        title=project.title,
+        preferred_language=project.preferred_language,
+        preferred_style=project.preferred_style,
+        brief=project.brief,
+        prompt_draft=project.prompt_draft,
+        source_manifest=json.loads(project.source_manifest_json or "{}"),
+    )
 
 
 @router.get("/projects/{project_id}/rebuilds", response_model=list[RebuildVersionRead])

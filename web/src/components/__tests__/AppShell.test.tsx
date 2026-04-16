@@ -11,6 +11,19 @@ describe("App shell", () => {
           json: async () => [{ id: 7, title: "History deck", preferred_language: "zh-CN" }],
         };
       }
+      if (url.endsWith("/projects/7")) {
+        return {
+          json: async () => ({
+            id: 7,
+            title: "History deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "History brief",
+            prompt_draft: "History prompt",
+            source_manifest: { urls: [] },
+          }),
+        };
+      }
       if (url.includes("/rebuilds")) {
         return {
           json: async () => [],

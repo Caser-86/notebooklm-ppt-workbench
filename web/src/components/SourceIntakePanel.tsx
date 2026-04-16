@@ -1,9 +1,11 @@
 type SourceIntakePanelProps = {
   prompt: string;
   onPromptChange: (value: string) => void;
+  sourceLinks: string;
+  onSourceLinksChange: (value: string) => void;
 };
 
-export function SourceIntakePanel({ prompt, onPromptChange }: SourceIntakePanelProps) {
+export function SourceIntakePanel({ prompt, onPromptChange, sourceLinks, onSourceLinksChange }: SourceIntakePanelProps) {
   return (
     <section className="workspace-section">
       <div className="section-copy">
@@ -14,6 +16,10 @@ export function SourceIntakePanel({ prompt, onPromptChange }: SourceIntakePanelP
       <label>
         Project brief
         <textarea value={prompt} onChange={(event) => onPromptChange(event.target.value)} />
+      </label>
+      <label>
+        Source links
+        <textarea value={sourceLinks} onChange={(event) => onSourceLinksChange(event.target.value)} />
       </label>
     </section>
   );

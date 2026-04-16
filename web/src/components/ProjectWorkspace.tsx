@@ -4,13 +4,14 @@ import { ArtifactGallery } from "./ArtifactGallery";
 import { JobTimeline } from "./JobTimeline";
 import { PromptStudio } from "./PromptStudio";
 import { SourceIntakePanel } from "./SourceIntakePanel";
-import { fetchProjectRebuilds, submitManualExportRebuild } from "../lib/api";
+import { fetchProjectDetail, fetchProjectRebuilds, submitManualExportRebuild, updateProjectDetail } from "../lib/api";
 import type { DownloadArtifact, RebuildVersion } from "../lib/types";
 
 export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [brief, setBrief] = useState("Create a launch deck");
   const [presetId, setPresetId] = useState("default");
   const [value, setValue] = useState("Start here");
+  const [sourceLinks, setSourceLinks] = useState("");
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
@@ -21,15 +22,21 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
     if (!projectId) {
       setArtifacts([]);
       setRebuilds([]);
+      setBrief("Create a launch deck");
+      setValue("Start here");
+      setSourceLinks("");
       return;
     }
 
     let isMounted = true;
-    void fetchProjectRebuilds(projectId).then((history) => {
+    void Promise.all([fetchProjectDetail(projectId), fetchProjectRebuilds(projectId)]).then(([detail, history]) => {
       if (!isMounted) {
         return;
       }
       startTransition(() => {
+        setBrief(detail.brief || "");
+        setValue(detail.prompt_draft || "");
+        setSourceLinks((detail.source_manifest?.urls ?? []).join("\n"));
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
       });
@@ -51,7 +58,12 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         <h3>Semi-automatic mode</h3>
         <p>This workspace prepares the prompt and rebuilds the exported deck, while you generate and export inside NotebookLM.</p>
       </section>
-      <SourceIntakePanel prompt={brief} onPromptChange={setBrief} />
+      <SourceIntakePanel
+        prompt={brief}
+        onPromptChange={setBrief}
+        sourceLinks={sourceLinks}
+        onSourceLinksChange={setSourceLinks}
+      />
       <PromptStudio
         presets={[{ id: "default", label: "Default", body: "Start here" }]}
         selectedPresetId={presetId}
@@ -59,6 +71,42 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         onPresetChange={setPresetId}
         onValueChange={setValue}
       />
+      <section className="workspace-section">
+        <div className="section-copy">
+          <p className="eyebrow">Project draft</p>
+          <h3>Save project details</h3>
+          <p>Store the current brief, prompt draft, and source links with this project before handing off to NotebookLM.</p>
+        </div>
+        <div className="handoff-actions">
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!projectId}
+            onClick={async () => {
+              if (!projectId) {
+                return;
+              }
+              const detail = await updateProjectDetail(projectId, {
+                brief,
+                prompt_draft: value,
+                source_manifest: {
+                  urls: sourceLinks
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                },
+              });
+              startTransition(() => {
+                setBrief(detail.brief);
+                setValue(detail.prompt_draft);
+                setSourceLinks((detail.source_manifest?.urls ?? []).join("\n"));
+              });
+            }}
+          >
+            Save project details
+          </button>
+        </div>
+      </section>
       <section className="workspace-section workspace-section--handoff">
         <div className="section-copy">
           <p className="eyebrow">NotebookLM handoff</p>
