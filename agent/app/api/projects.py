@@ -7,10 +7,10 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Project, RebuildVersion
-from app.schemas import ArtifactLink, ProjectCreate, ProjectDetailRead, ProjectUpdate, RebuildVersionRead
+from app.models import Project, RebuildVersion, SourceRevision
+from app.schemas import ArtifactLink, ProjectCreate, ProjectDetailRead, ProjectUpdate, RebuildVersionRead, SourceRevisionRead
 from app.services.artifacts import artifact_version_href
-from app.services.source_ingest import build_source_bundle
+from app.services.source_ingest import build_source_bundle, summarize_source_bundle
 
 router = APIRouter(tags=["projects"])
 
@@ -51,6 +51,7 @@ def get_project(project_id: int, session: Session = Depends(get_session)) -> Pro
         brief=project.brief,
         prompt_draft=project.prompt_draft,
         source_manifest=json.loads(project.source_manifest_json or "{}"),
+        insight_summary=project.insight_summary,
     )
 
 
@@ -73,6 +74,7 @@ def update_project(project_id: int, payload: ProjectUpdate, session: Session = D
         brief=project.brief,
         prompt_draft=project.prompt_draft,
         source_manifest=json.loads(project.source_manifest_json or "{}"),
+        insight_summary=project.insight_summary,
     )
 
 
@@ -102,8 +104,23 @@ def list_project_rebuilds(project_id: int, session: Session = Depends(get_sessio
     ]
 
 
+@router.get("/projects/{project_id}/sources/history", response_model=list[SourceRevisionRead])
+def list_project_source_history(project_id: int, session: Session = Depends(get_session)) -> list[SourceRevisionRead]:
+    statement = select(SourceRevision).where(SourceRevision.project_id == project_id).order_by(SourceRevision.revision_number.desc())
+    revisions = list(session.exec(statement))
+    return [
+        SourceRevisionRead(
+            id=revision.id or 0,
+            revision_number=revision.revision_number,
+            source_manifest=json.loads(revision.source_manifest_json or "{}"),
+            insight_summary=revision.insight_summary,
+        )
+        for revision in revisions
+    ]
+
+
 @router.post("/projects/{project_id}/sources")
-def submit_sources(project_id: int, payload: SourceSubmit):
+def submit_sources(project_id: int, payload: SourceSubmit, session: Session = Depends(get_session)):
     bundle = build_source_bundle(
         prompt=payload.prompt,
         urls=payload.urls,
@@ -112,4 +129,43 @@ def submit_sources(project_id: int, payload: SourceSubmit):
         audio_paths=[Path(path) for path in payload.audio_paths],
         video_paths=[Path(path) for path in payload.video_paths],
     )
-    return {"project_id": project_id, "source_manifest": bundle.__dict__}
+    project = session.get(Project, project_id)
+    assert project is not None
+
+    source_manifest = {
+        "prompt": bundle.prompt,
+        "urls": bundle.urls,
+        "file_paths": bundle.file_paths,
+        "image_paths": bundle.image_paths,
+        "audio_paths": bundle.audio_paths,
+        "video_paths": bundle.video_paths,
+    }
+    insight_summary = summarize_source_bundle(bundle)
+
+    current_max = session.exec(
+        select(SourceRevision.revision_number)
+        .where(SourceRevision.project_id == project_id)
+        .order_by(SourceRevision.revision_number.desc())
+    ).first()
+    revision_number = (current_max or 0) + 1
+
+    project.source_manifest_json = json.dumps(source_manifest)
+    project.insight_summary = insight_summary
+    project.updated_at = datetime.now(UTC)
+    session.add(project)
+    session.add(
+        SourceRevision(
+            project_id=project_id,
+            revision_number=revision_number,
+            source_manifest_json=json.dumps(source_manifest),
+            insight_summary=insight_summary,
+        )
+    )
+    session.commit()
+
+    return {
+        "project_id": project_id,
+        "revision_number": revision_number,
+        "source_manifest": source_manifest,
+        "insight_summary": insight_summary,
+    }

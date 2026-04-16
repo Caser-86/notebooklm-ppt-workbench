@@ -61,7 +61,7 @@ describe("ProjectWorkspace", () => {
     await user.upload(slideInput, file);
     await user.click(screen.getByRole("button", { name: "Mark export ready" }));
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
     const displayLinks = await screen.findAllByRole("link", { name: "Display clone" });
     const editableLinks = screen.getAllByRole("link", { name: "Editable rebuild" });
 
@@ -79,6 +79,9 @@ describe("ProjectWorkspace", () => {
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
+      if (url.includes("/sources/history")) {
+        return { json: async () => [] };
+      }
       if (url.endsWith("/projects/3")) {
         return {
           json: async () => ({
@@ -88,7 +91,11 @@ describe("ProjectWorkspace", () => {
             preferred_style: "default",
             brief: "Loaded brief",
             prompt_draft: "Loaded prompt",
-            source_manifest: { urls: ["https://example.com/one", "https://example.com/two"] },
+            source_manifest: {
+              urls: ["https://example.com/one", "https://example.com/two"],
+              file_paths: ["D:/docs/launch-brief.txt"],
+            },
+            insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
           }),
         };
       }
@@ -102,6 +109,8 @@ describe("ProjectWorkspace", () => {
     expect(await screen.findByDisplayValue("Loaded brief")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Loaded prompt")).toBeInTheDocument();
     expect(screen.getByLabelText("Source links")).toHaveValue("https://example.com/one\nhttps://example.com/two");
+    expect(screen.getByLabelText("Source file paths")).toHaveValue("D:/docs/launch-brief.txt");
+    expect(screen.getByText("1 url, 1 file, 0 images, 0 audio, 0 video")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });
@@ -113,6 +122,9 @@ describe("ProjectWorkspace", () => {
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
+      if (url.includes("/sources/history")) {
+        return { json: async () => [] };
+      }
       if (url.endsWith("/projects/4") && (!init || init.method === undefined)) {
         return {
           json: async () => ({
@@ -122,7 +134,8 @@ describe("ProjectWorkspace", () => {
             preferred_style: "default",
             brief: "Original brief",
             prompt_draft: "Original prompt",
-            source_manifest: { urls: ["https://example.com/start"] },
+            source_manifest: { urls: ["https://example.com/start"], file_paths: ["D:/docs/original.txt"] },
+            insight_summary: "",
           }),
         };
       }
@@ -135,7 +148,8 @@ describe("ProjectWorkspace", () => {
             preferred_style: "default",
             brief: "Updated brief",
             prompt_draft: "Updated prompt",
-            source_manifest: { urls: ["https://example.com/updated"] },
+            source_manifest: { urls: ["https://example.com/updated"], file_paths: ["D:/docs/updated.txt"] },
+            insight_summary: "",
           }),
         };
       }
@@ -149,6 +163,8 @@ describe("ProjectWorkspace", () => {
     const briefInput = await screen.findByDisplayValue("Original brief");
     const promptInput = screen.getByDisplayValue("Original prompt");
     const sourceLinksInput = screen.getByDisplayValue("https://example.com/start");
+    const sourceFilesInput = screen.getByLabelText("Source file paths");
+    expect(sourceFilesInput).toHaveValue("D:/docs/original.txt");
 
     await user.clear(briefInput);
     await user.type(briefInput, "Updated brief");
@@ -156,6 +172,8 @@ describe("ProjectWorkspace", () => {
     await user.type(promptInput, "Updated prompt");
     await user.clear(sourceLinksInput);
     await user.type(sourceLinksInput, "https://example.com/updated");
+    await user.clear(sourceFilesInput);
+    await user.type(sourceFilesInput, "D:/docs/updated.txt");
     await user.click(screen.getByRole("button", { name: "Save project details" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -164,6 +182,79 @@ describe("ProjectWorkspace", () => {
         method: "PUT",
       }),
     );
+
+    vi.unstubAllGlobals();
+  });
+
+  it("analyzes source inputs and shows source history", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return {
+          json: async () => [
+            {
+              id: 1,
+              revision_number: 1,
+              source_manifest: {
+                urls: ["https://example.com/launch"],
+                file_paths: ["D:/docs/launch.txt"],
+              },
+              insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+            },
+          ],
+        };
+      }
+      if (url.endsWith("/projects/5") && (!init || init.method === undefined)) {
+        return {
+          json: async () => ({
+            id: 5,
+            title: "Insight deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Current brief",
+            prompt_draft: "Current prompt",
+            source_manifest: { urls: ["https://example.com/launch"], file_paths: ["D:/docs/launch.txt"] },
+            insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+          }),
+        };
+      }
+      if (url.includes("/sources") && init?.method === "POST") {
+        return {
+          json: async () => ({
+            project_id: 5,
+            revision_number: 2,
+            source_manifest: {
+              urls: ["https://example.com/launch", "https://example.com/faq"],
+              file_paths: ["D:/docs/launch.txt", "D:/docs/faq.txt"],
+            },
+            insight_summary: "2 urls, 2 files, 0 images, 0 audio, 0 video",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={5} />);
+
+    const sourceLinksInput = await screen.findByDisplayValue("https://example.com/launch");
+    const sourceFilesInput = screen.getByLabelText("Source file paths");
+    expect(sourceFilesInput).toHaveValue("D:/docs/launch.txt");
+
+    await user.clear(sourceLinksInput);
+    await user.type(sourceLinksInput, "https://example.com/launch\nhttps://example.com/faq");
+    await user.clear(sourceFilesInput);
+    await user.type(sourceFilesInput, "D:/docs/launch.txt\nD:/docs/faq.txt");
+    await user.click(screen.getByRole("button", { name: "Analyze sources" }));
+
+    expect((await screen.findAllByText("2 urls, 2 files, 0 images, 0 audio, 0 video")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Recent source versions")).toBeInTheDocument();
+    expect(screen.getByText("Revision 2")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });

@@ -6,6 +6,7 @@ from pathlib import Path
 class SourceBundle:
     prompt: str
     urls: list[str]
+    file_paths: list[str]
     file_texts: list[dict[str, str]]
     image_paths: list[str]
     audio_paths: list[str]
@@ -24,8 +25,23 @@ def build_source_bundle(
     return SourceBundle(
         prompt=prompt,
         urls=urls,
+        file_paths=[str(path) for path in file_paths],
         file_texts=file_texts,
         image_paths=[str(path) for path in image_paths],
         audio_paths=[str(path) for path in audio_paths],
         video_paths=[str(path) for path in video_paths],
     )
+
+
+def summarize_source_bundle(bundle: SourceBundle) -> str:
+    def count_label(count: int, singular: str, plural: str) -> str:
+        return f"{count} {singular if count == 1 else plural}"
+
+    parts = [
+        count_label(len(bundle.urls), "url", "urls"),
+        count_label(len(bundle.file_paths), "file", "files"),
+        count_label(len(bundle.image_paths), "image", "images"),
+        count_label(len(bundle.audio_paths), "audio", "audio"),
+        count_label(len(bundle.video_paths), "video", "video"),
+    ]
+    return ", ".join(parts)

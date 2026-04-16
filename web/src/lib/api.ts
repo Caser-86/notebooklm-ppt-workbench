@@ -5,6 +5,7 @@ import type {
   ProjectSummary,
   PromptPreset,
   RebuildVersion,
+  SourceRevision,
 } from "./types";
 
 const API_BASE = "http://127.0.0.1:8000";
@@ -35,7 +36,7 @@ export async function fetchProjectDetail(projectId: number): Promise<ProjectDeta
 
 export async function updateProjectDetail(
   projectId: number,
-  payload: { brief: string; prompt_draft: string; source_manifest: { urls: string[] } },
+  payload: { brief: string; prompt_draft: string; source_manifest: { urls: string[]; file_paths: string[] } },
 ): Promise<ProjectDetail> {
   const response = await fetch(`${API_BASE}/projects/${projectId}`, {
     method: "PUT",
@@ -55,6 +56,23 @@ export async function fetchProjectRebuilds(projectId: number): Promise<RebuildVe
       href: artifact.href.startsWith("http") ? artifact.href : `${API_BASE}${artifact.href}`,
     })),
   }));
+}
+
+export async function fetchProjectSourceHistory(projectId: number): Promise<SourceRevision[]> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/sources/history`);
+  return response.json();
+}
+
+export async function analyzeProjectSources(
+  projectId: number,
+  payload: { prompt: string; urls: string[]; file_paths: string[]; image_paths: string[]; audio_paths: string[]; video_paths: string[] },
+): Promise<{ revision_number: number; source_manifest: { urls: string[]; file_paths: string[] }; insight_summary: string }> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/sources`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return response.json();
 }
 
 export async function launchGenerateJob(

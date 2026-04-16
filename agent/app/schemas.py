@@ -14,12 +14,20 @@ class ProjectDetailRead(BaseModel):
     brief: str
     prompt_draft: str
     source_manifest: dict
+    insight_summary: str
 
 
 class ProjectUpdate(BaseModel):
     brief: str = ""
     prompt_draft: str = ""
     source_manifest: dict = {}
+
+
+class SourceRevisionRead(BaseModel):
+    id: int
+    revision_number: int
+    source_manifest: dict
+    insight_summary: str
 
 
 class JobCreate(BaseModel):

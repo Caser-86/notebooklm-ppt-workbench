@@ -4,14 +4,24 @@ import { ArtifactGallery } from "./ArtifactGallery";
 import { JobTimeline } from "./JobTimeline";
 import { PromptStudio } from "./PromptStudio";
 import { SourceIntakePanel } from "./SourceIntakePanel";
-import { fetchProjectDetail, fetchProjectRebuilds, submitManualExportRebuild, updateProjectDetail } from "../lib/api";
-import type { DownloadArtifact, RebuildVersion } from "../lib/types";
+import {
+  analyzeProjectSources,
+  fetchProjectDetail,
+  fetchProjectRebuilds,
+  fetchProjectSourceHistory,
+  submitManualExportRebuild,
+  updateProjectDetail,
+} from "../lib/api";
+import type { DownloadArtifact, RebuildVersion, SourceRevision } from "../lib/types";
 
 export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [brief, setBrief] = useState("Create a launch deck");
   const [presetId, setPresetId] = useState("default");
   const [value, setValue] = useState("Start here");
   const [sourceLinks, setSourceLinks] = useState("");
+  const [sourceFilePaths, setSourceFilePaths] = useState("");
+  const [insightSummary, setInsightSummary] = useState("");
+  const [sourceHistory, setSourceHistory] = useState<SourceRevision[]>([]);
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
@@ -25,11 +35,15 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setBrief("Create a launch deck");
       setValue("Start here");
       setSourceLinks("");
+      setSourceFilePaths("");
+      setInsightSummary("");
+      setSourceHistory([]);
       return;
     }
 
     let isMounted = true;
-    void Promise.all([fetchProjectDetail(projectId), fetchProjectRebuilds(projectId)]).then(([detail, history]) => {
+    void Promise.all([fetchProjectDetail(projectId), fetchProjectRebuilds(projectId), fetchProjectSourceHistory(projectId)]).then(
+      ([detail, history, sourceRevisions]) => {
       if (!isMounted) {
         return;
       }
@@ -37,6 +51,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setBrief(detail.brief || "");
         setValue(detail.prompt_draft || "");
         setSourceLinks((detail.source_manifest?.urls ?? []).join("\n"));
+        setSourceFilePaths((detail.source_manifest?.file_paths ?? []).join("\n"));
+        setInsightSummary(detail.insight_summary || "");
+        setSourceHistory(sourceRevisions);
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
       });
@@ -63,6 +80,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         onPromptChange={setBrief}
         sourceLinks={sourceLinks}
         onSourceLinksChange={setSourceLinks}
+        sourceFilePaths={sourceFilePaths}
+        onSourceFilePathsChange={setSourceFilePaths}
       />
       <PromptStudio
         presets={[{ id: "default", label: "Default", body: "Start here" }]}
@@ -94,18 +113,78 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     .split("\n")
                     .map((item) => item.trim())
                     .filter(Boolean),
+                  file_paths: sourceFilePaths
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
                 },
               });
               startTransition(() => {
                 setBrief(detail.brief);
                 setValue(detail.prompt_draft);
                 setSourceLinks((detail.source_manifest?.urls ?? []).join("\n"));
+                setSourceFilePaths((detail.source_manifest?.file_paths ?? []).join("\n"));
               });
             }}
           >
             Save project details
           </button>
         </div>
+      </section>
+      <section className="workspace-section">
+        <div className="section-copy">
+          <p className="eyebrow">Source insight</p>
+          <h3>Analyze current sources</h3>
+          <p>Persist the current URLs and file paths, then generate a lightweight intake summary for this project.</p>
+        </div>
+        <div className="handoff-actions">
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!projectId}
+            onClick={async () => {
+              if (!projectId) {
+                return;
+              }
+              const payload = await analyzeProjectSources(projectId, {
+                prompt: brief,
+                urls: sourceLinks.split("\n").map((item) => item.trim()).filter(Boolean),
+                file_paths: sourceFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
+                image_paths: [],
+                audio_paths: [],
+                video_paths: [],
+              });
+              startTransition(() => {
+                setInsightSummary(payload.insight_summary);
+                setSourceHistory((current) => [
+                  {
+                    id: payload.revision_number,
+                    revision_number: payload.revision_number,
+                    source_manifest: payload.source_manifest,
+                    insight_summary: payload.insight_summary,
+                  },
+                  ...current,
+                ]);
+              });
+            }}
+          >
+            Analyze sources
+          </button>
+        </div>
+        {insightSummary ? <p>{insightSummary}</p> : <p>No source insight yet. Analyze the current links and file paths to persist a source snapshot.</p>}
+        {sourceHistory.length > 0 ? (
+          <div className="rebuild-history">
+            <h4>Recent source versions</h4>
+            <ul>
+              {sourceHistory.map((revision) => (
+                <li key={revision.id}>
+                  <span>{`Revision ${revision.revision_number}`}</span>
+                  <span>{revision.insight_summary}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </section>
       <section className="workspace-section workspace-section--handoff">
         <div className="section-copy">

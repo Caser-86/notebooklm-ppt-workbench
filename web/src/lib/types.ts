@@ -25,8 +25,10 @@ export type ProjectDetail = {
   prompt_draft: string;
   source_manifest: {
     urls?: string[];
+    file_paths?: string[];
     notes?: string;
   };
+  insight_summary: string;
 };
 
 export type LaunchJobResponse = {
@@ -46,4 +48,14 @@ export type RebuildVersion = {
   version_number: number;
   slide_count: number;
   artifacts: DownloadArtifact[];
+};
+
+export type SourceRevision = {
+  id: number;
+  revision_number: number;
+  source_manifest: {
+    urls?: string[];
+    file_paths?: string[];
+  };
+  insight_summary: string;
 };
