@@ -4,6 +4,7 @@ from sqlmodel import Session
 
 from app.db import get_session
 from app.models import Job
+from app.services.reconstruct.display_clone import build_display_clone
 from app.schemas import JobCreate
 from app.services.notebooklm import run_generation
 from app.services.prompts import build_generation_prompt, get_prompt_presets
@@ -41,3 +42,12 @@ def launch_generate_job(project_id: int, payload: LaunchGenerateJob):
 def run_job(job_id: int, browser_ready: bool = True):
     result = run_generation({"mode": "auto", "browser_ready": browser_ready, "prompt": ""})
     return {"job_id": job_id, **result}
+
+
+@router.post("/projects/{project_id}/rebuild/display-clone")
+def rebuild_display_clone(project_id: int, slide_paths: list[str]):
+    from pathlib import Path
+
+    output_path = Path(f"agent/data/artifacts/{project_id}/display-clone.pptx")
+    build_display_clone([Path(path) for path in slide_paths], output_path)
+    return {"project_id": project_id, "artifact": str(output_path)}
