@@ -5,6 +5,7 @@ from sqlmodel import Session
 from app.db import get_session
 from app.models import Job
 from app.schemas import JobCreate
+from app.services.notebooklm import run_generation
 from app.services.prompts import build_generation_prompt, get_prompt_presets
 
 router = APIRouter(tags=["jobs"])
@@ -34,3 +35,9 @@ def list_prompt_presets():
 def launch_generate_job(project_id: int, payload: LaunchGenerateJob):
     prompt = build_generation_prompt(payload.preset_id, payload.user_prompt, payload.source_summary)
     return {"project_id": project_id, "status": "ready_to_generate", "prompt": prompt}
+
+
+@router.post("/jobs/{job_id}/run")
+def run_job(job_id: int, browser_ready: bool = True):
+    result = run_generation({"mode": "auto", "browser_ready": browser_ready, "prompt": ""})
+    return {"job_id": job_id, **result}
