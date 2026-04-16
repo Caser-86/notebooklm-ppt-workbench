@@ -20,6 +20,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [value, setValue] = useState("Start here");
   const [sourceLinks, setSourceLinks] = useState("");
   const [sourceFilePaths, setSourceFilePaths] = useState("");
+  const [imageFilePaths, setImageFilePaths] = useState("");
+  const [audioFilePaths, setAudioFilePaths] = useState("");
+  const [videoFilePaths, setVideoFilePaths] = useState("");
   const [insightSummary, setInsightSummary] = useState("");
   const [sourceHistory, setSourceHistory] = useState<SourceRevision[]>([]);
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
@@ -36,6 +39,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setValue("Start here");
       setSourceLinks("");
       setSourceFilePaths("");
+      setImageFilePaths("");
+      setAudioFilePaths("");
+      setVideoFilePaths("");
       setInsightSummary("");
       setSourceHistory([]);
       return;
@@ -52,6 +58,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setValue(detail.prompt_draft || "");
         setSourceLinks((detail.source_manifest?.urls ?? []).join("\n"));
         setSourceFilePaths((detail.source_manifest?.file_paths ?? []).join("\n"));
+        setImageFilePaths((detail.source_manifest?.image_paths ?? []).join("\n"));
+        setAudioFilePaths((detail.source_manifest?.audio_paths ?? []).join("\n"));
+        setVideoFilePaths((detail.source_manifest?.video_paths ?? []).join("\n"));
         setInsightSummary(detail.insight_summary || "");
         setSourceHistory(sourceRevisions);
         setRebuilds(history);
@@ -82,6 +91,12 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         onSourceLinksChange={setSourceLinks}
         sourceFilePaths={sourceFilePaths}
         onSourceFilePathsChange={setSourceFilePaths}
+        imageFilePaths={imageFilePaths}
+        onImageFilePathsChange={setImageFilePaths}
+        audioFilePaths={audioFilePaths}
+        onAudioFilePathsChange={setAudioFilePaths}
+        videoFilePaths={videoFilePaths}
+        onVideoFilePathsChange={setVideoFilePaths}
       />
       <PromptStudio
         presets={[{ id: "default", label: "Default", body: "Start here" }]}
@@ -117,6 +132,18 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     .split("\n")
                     .map((item) => item.trim())
                     .filter(Boolean),
+                  image_paths: imageFilePaths
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                  audio_paths: audioFilePaths
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
+                  video_paths: videoFilePaths
+                    .split("\n")
+                    .map((item) => item.trim())
+                    .filter(Boolean),
                 },
               });
               startTransition(() => {
@@ -124,6 +151,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                 setValue(detail.prompt_draft);
                 setSourceLinks((detail.source_manifest?.urls ?? []).join("\n"));
                 setSourceFilePaths((detail.source_manifest?.file_paths ?? []).join("\n"));
+                setImageFilePaths((detail.source_manifest?.image_paths ?? []).join("\n"));
+                setAudioFilePaths((detail.source_manifest?.audio_paths ?? []).join("\n"));
+                setVideoFilePaths((detail.source_manifest?.video_paths ?? []).join("\n"));
               });
             }}
           >
@@ -150,9 +180,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                 prompt: brief,
                 urls: sourceLinks.split("\n").map((item) => item.trim()).filter(Boolean),
                 file_paths: sourceFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
-                image_paths: [],
-                audio_paths: [],
-                video_paths: [],
+                image_paths: imageFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
+                audio_paths: audioFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
+                video_paths: videoFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
               });
               startTransition(() => {
                 setInsightSummary(payload.insight_summary);

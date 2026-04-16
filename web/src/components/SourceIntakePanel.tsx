@@ -5,6 +5,12 @@ type SourceIntakePanelProps = {
   onSourceLinksChange: (value: string) => void;
   sourceFilePaths: string;
   onSourceFilePathsChange: (value: string) => void;
+  imageFilePaths: string;
+  onImageFilePathsChange: (value: string) => void;
+  audioFilePaths: string;
+  onAudioFilePathsChange: (value: string) => void;
+  videoFilePaths: string;
+  onVideoFilePathsChange: (value: string) => void;
 };
 
 export function SourceIntakePanel({
@@ -14,6 +20,12 @@ export function SourceIntakePanel({
   onSourceLinksChange,
   sourceFilePaths,
   onSourceFilePathsChange,
+  imageFilePaths,
+  onImageFilePathsChange,
+  audioFilePaths,
+  onAudioFilePathsChange,
+  videoFilePaths,
+  onVideoFilePathsChange,
 }: SourceIntakePanelProps) {
   return (
     <section className="workspace-section">
@@ -33,6 +45,18 @@ export function SourceIntakePanel({
       <label>
         Source file paths
         <textarea value={sourceFilePaths} onChange={(event) => onSourceFilePathsChange(event.target.value)} />
+      </label>
+      <label>
+        Image file paths
+        <textarea value={imageFilePaths} onChange={(event) => onImageFilePathsChange(event.target.value)} />
+      </label>
+      <label>
+        Audio file paths
+        <textarea value={audioFilePaths} onChange={(event) => onAudioFilePathsChange(event.target.value)} />
+      </label>
+      <label>
+        Video file paths
+        <textarea value={videoFilePaths} onChange={(event) => onVideoFilePathsChange(event.target.value)} />
       </label>
     </section>
   );

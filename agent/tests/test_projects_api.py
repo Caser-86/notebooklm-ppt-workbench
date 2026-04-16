@@ -73,21 +73,31 @@ def test_submit_sources_updates_project_detail_and_source_history(tmp_path):
             "prompt": "Launch summary",
             "urls": ["https://example.com/launch"],
             "file_paths": [str(source_file)],
-            "image_paths": [],
-            "audio_paths": [],
-            "video_paths": [],
+            "image_paths": ["D:/media/launch-cover.png"],
+            "audio_paths": ["D:/media/launch-voice.mp3"],
+            "video_paths": ["D:/media/launch-demo.mp4"],
         },
     )
 
     assert submit_response.status_code == 200
     submit_body = submit_response.json()
     assert submit_body["source_manifest"]["urls"] == ["https://example.com/launch"]
-    assert submit_body["source_manifest"]["file_paths"] == [str(source_file)]
+    normalized_file_path = source_file.as_posix()
+    assert submit_body["source_manifest"]["file_paths"] == [normalized_file_path]
+    assert submit_body["source_manifest"]["image_paths"] == ["D:/media/launch-cover.png"]
+    assert submit_body["source_manifest"]["audio_paths"] == ["D:/media/launch-voice.mp3"]
+    assert submit_body["source_manifest"]["video_paths"] == ["D:/media/launch-demo.mp4"]
     assert "1 url" in submit_body["insight_summary"].lower()
+    assert "1 image" in submit_body["insight_summary"].lower()
+    assert "1 audio" in submit_body["insight_summary"].lower()
+    assert "1 video" in submit_body["insight_summary"].lower()
 
     detail_response = client.get(f"/projects/{project['id']}")
     detail = detail_response.json()
-    assert detail["source_manifest"]["file_paths"] == [str(source_file)]
+    assert detail["source_manifest"]["file_paths"] == [normalized_file_path]
+    assert detail["source_manifest"]["image_paths"] == ["D:/media/launch-cover.png"]
+    assert detail["source_manifest"]["audio_paths"] == ["D:/media/launch-voice.mp3"]
+    assert detail["source_manifest"]["video_paths"] == ["D:/media/launch-demo.mp4"]
     assert detail["insight_summary"] == submit_body["insight_summary"]
 
     history_response = client.get(f"/projects/{project['id']}/sources/history")

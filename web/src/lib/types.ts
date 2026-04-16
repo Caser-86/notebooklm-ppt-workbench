@@ -26,6 +26,9 @@ export type ProjectDetail = {
   source_manifest: {
     urls?: string[];
     file_paths?: string[];
+    image_paths?: string[];
+    audio_paths?: string[];
+    video_paths?: string[];
     notes?: string;
   };
   insight_summary: string;
@@ -56,6 +59,9 @@ export type SourceRevision = {
   source_manifest: {
     urls?: string[];
     file_paths?: string[];
+    image_paths?: string[];
+    audio_paths?: string[];
+    video_paths?: string[];
   };
   insight_summary: string;
 };

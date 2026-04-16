@@ -13,6 +13,10 @@ class SourceBundle:
     video_paths: list[str]
 
 
+def _normalize_path(path: Path) -> str:
+    return path.as_posix()
+
+
 def build_source_bundle(
     prompt: str,
     urls: list[str],
@@ -21,15 +25,15 @@ def build_source_bundle(
     audio_paths: list[Path],
     video_paths: list[Path],
 ) -> SourceBundle:
-    file_texts = [{"path": str(path), "text": path.read_text(encoding="utf-8")} for path in file_paths]
+    file_texts = [{"path": _normalize_path(path), "text": path.read_text(encoding="utf-8")} for path in file_paths]
     return SourceBundle(
         prompt=prompt,
         urls=urls,
-        file_paths=[str(path) for path in file_paths],
+        file_paths=[_normalize_path(path) for path in file_paths],
         file_texts=file_texts,
-        image_paths=[str(path) for path in image_paths],
-        audio_paths=[str(path) for path in audio_paths],
-        video_paths=[str(path) for path in video_paths],
+        image_paths=[_normalize_path(path) for path in image_paths],
+        audio_paths=[_normalize_path(path) for path in audio_paths],
+        video_paths=[_normalize_path(path) for path in video_paths],
     )
 
 

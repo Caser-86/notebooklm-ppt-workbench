@@ -36,7 +36,17 @@ export async function fetchProjectDetail(projectId: number): Promise<ProjectDeta
 
 export async function updateProjectDetail(
   projectId: number,
-  payload: { brief: string; prompt_draft: string; source_manifest: { urls: string[]; file_paths: string[] } },
+  payload: {
+    brief: string;
+    prompt_draft: string;
+    source_manifest: {
+      urls: string[];
+      file_paths: string[];
+      image_paths: string[];
+      audio_paths: string[];
+      video_paths: string[];
+    };
+  },
 ): Promise<ProjectDetail> {
   const response = await fetch(`${API_BASE}/projects/${projectId}`, {
     method: "PUT",
@@ -65,8 +75,25 @@ export async function fetchProjectSourceHistory(projectId: number): Promise<Sour
 
 export async function analyzeProjectSources(
   projectId: number,
-  payload: { prompt: string; urls: string[]; file_paths: string[]; image_paths: string[]; audio_paths: string[]; video_paths: string[] },
-): Promise<{ revision_number: number; source_manifest: { urls: string[]; file_paths: string[] }; insight_summary: string }> {
+  payload: {
+    prompt: string;
+    urls: string[];
+    file_paths: string[];
+    image_paths: string[];
+    audio_paths: string[];
+    video_paths: string[];
+  },
+): Promise<{
+  revision_number: number;
+  source_manifest: {
+    urls: string[];
+    file_paths: string[];
+    image_paths: string[];
+    audio_paths: string[];
+    video_paths: string[];
+  };
+  insight_summary: string;
+}> {
   const response = await fetch(`${API_BASE}/projects/${projectId}/sources`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

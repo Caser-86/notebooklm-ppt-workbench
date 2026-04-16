@@ -94,8 +94,11 @@ describe("ProjectWorkspace", () => {
             source_manifest: {
               urls: ["https://example.com/one", "https://example.com/two"],
               file_paths: ["D:/docs/launch-brief.txt"],
+              image_paths: ["D:/media/cover.png"],
+              audio_paths: ["D:/media/voice.mp3"],
+              video_paths: ["D:/media/demo.mp4"],
             },
-            insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+            insight_summary: "2 urls, 1 file, 1 image, 1 audio, 1 video",
           }),
         };
       }
@@ -110,7 +113,10 @@ describe("ProjectWorkspace", () => {
     expect(screen.getByDisplayValue("Loaded prompt")).toBeInTheDocument();
     expect(screen.getByLabelText("Source links")).toHaveValue("https://example.com/one\nhttps://example.com/two");
     expect(screen.getByLabelText("Source file paths")).toHaveValue("D:/docs/launch-brief.txt");
-    expect(screen.getByText("1 url, 1 file, 0 images, 0 audio, 0 video")).toBeInTheDocument();
+    expect(screen.getByLabelText("Image file paths")).toHaveValue("D:/media/cover.png");
+    expect(screen.getByLabelText("Audio file paths")).toHaveValue("D:/media/voice.mp3");
+    expect(screen.getByLabelText("Video file paths")).toHaveValue("D:/media/demo.mp4");
+    expect(screen.getByText("2 urls, 1 file, 1 image, 1 audio, 1 video")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });
@@ -134,7 +140,13 @@ describe("ProjectWorkspace", () => {
             preferred_style: "default",
             brief: "Original brief",
             prompt_draft: "Original prompt",
-            source_manifest: { urls: ["https://example.com/start"], file_paths: ["D:/docs/original.txt"] },
+            source_manifest: {
+              urls: ["https://example.com/start"],
+              file_paths: ["D:/docs/original.txt"],
+              image_paths: ["D:/media/original.png"],
+              audio_paths: ["D:/media/original.mp3"],
+              video_paths: ["D:/media/original.mp4"],
+            },
             insight_summary: "",
           }),
         };
@@ -148,7 +160,13 @@ describe("ProjectWorkspace", () => {
             preferred_style: "default",
             brief: "Updated brief",
             prompt_draft: "Updated prompt",
-            source_manifest: { urls: ["https://example.com/updated"], file_paths: ["D:/docs/updated.txt"] },
+            source_manifest: {
+              urls: ["https://example.com/updated"],
+              file_paths: ["D:/docs/updated.txt"],
+              image_paths: ["D:/media/updated.png"],
+              audio_paths: ["D:/media/updated.mp3"],
+              video_paths: ["D:/media/updated.mp4"],
+            },
             insight_summary: "",
           }),
         };
@@ -165,6 +183,12 @@ describe("ProjectWorkspace", () => {
     const sourceLinksInput = screen.getByDisplayValue("https://example.com/start");
     const sourceFilesInput = screen.getByLabelText("Source file paths");
     expect(sourceFilesInput).toHaveValue("D:/docs/original.txt");
+    const imagePathsInput = screen.getByLabelText("Image file paths");
+    expect(imagePathsInput).toHaveValue("D:/media/original.png");
+    const audioPathsInput = screen.getByLabelText("Audio file paths");
+    expect(audioPathsInput).toHaveValue("D:/media/original.mp3");
+    const videoPathsInput = screen.getByLabelText("Video file paths");
+    expect(videoPathsInput).toHaveValue("D:/media/original.mp4");
 
     await user.clear(briefInput);
     await user.type(briefInput, "Updated brief");
@@ -174,6 +198,12 @@ describe("ProjectWorkspace", () => {
     await user.type(sourceLinksInput, "https://example.com/updated");
     await user.clear(sourceFilesInput);
     await user.type(sourceFilesInput, "D:/docs/updated.txt");
+    await user.clear(imagePathsInput);
+    await user.type(imagePathsInput, "D:/media/updated.png");
+    await user.clear(audioPathsInput);
+    await user.type(audioPathsInput, "D:/media/updated.mp3");
+    await user.clear(videoPathsInput);
+    await user.type(videoPathsInput, "D:/media/updated.mp4");
     await user.click(screen.getByRole("button", { name: "Save project details" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -217,8 +247,14 @@ describe("ProjectWorkspace", () => {
             preferred_style: "default",
             brief: "Current brief",
             prompt_draft: "Current prompt",
-            source_manifest: { urls: ["https://example.com/launch"], file_paths: ["D:/docs/launch.txt"] },
-            insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+            source_manifest: {
+              urls: ["https://example.com/launch"],
+              file_paths: ["D:/docs/launch.txt"],
+              image_paths: ["D:/media/launch.png"],
+              audio_paths: ["D:/media/launch.mp3"],
+              video_paths: ["D:/media/launch.mp4"],
+            },
+            insight_summary: "1 url, 1 file, 1 image, 1 audio, 1 video",
           }),
         };
       }
@@ -230,8 +266,11 @@ describe("ProjectWorkspace", () => {
             source_manifest: {
               urls: ["https://example.com/launch", "https://example.com/faq"],
               file_paths: ["D:/docs/launch.txt", "D:/docs/faq.txt"],
+              image_paths: ["D:/media/launch.png", "D:/media/gallery.png"],
+              audio_paths: ["D:/media/launch.mp3"],
+              video_paths: ["D:/media/launch.mp4", "D:/media/demo.mp4"],
             },
-            insight_summary: "2 urls, 2 files, 0 images, 0 audio, 0 video",
+            insight_summary: "2 urls, 2 files, 2 images, 1 audio, 2 videos",
           }),
         };
       }
@@ -245,14 +284,26 @@ describe("ProjectWorkspace", () => {
     const sourceLinksInput = await screen.findByDisplayValue("https://example.com/launch");
     const sourceFilesInput = screen.getByLabelText("Source file paths");
     expect(sourceFilesInput).toHaveValue("D:/docs/launch.txt");
+    const imagePathsInput = screen.getByLabelText("Image file paths");
+    expect(imagePathsInput).toHaveValue("D:/media/launch.png");
+    const audioPathsInput = screen.getByLabelText("Audio file paths");
+    expect(audioPathsInput).toHaveValue("D:/media/launch.mp3");
+    const videoPathsInput = screen.getByLabelText("Video file paths");
+    expect(videoPathsInput).toHaveValue("D:/media/launch.mp4");
 
     await user.clear(sourceLinksInput);
     await user.type(sourceLinksInput, "https://example.com/launch\nhttps://example.com/faq");
     await user.clear(sourceFilesInput);
     await user.type(sourceFilesInput, "D:/docs/launch.txt\nD:/docs/faq.txt");
+    await user.clear(imagePathsInput);
+    await user.type(imagePathsInput, "D:/media/launch.png\nD:/media/gallery.png");
+    await user.clear(audioPathsInput);
+    await user.type(audioPathsInput, "D:/media/launch.mp3");
+    await user.clear(videoPathsInput);
+    await user.type(videoPathsInput, "D:/media/launch.mp4\nD:/media/demo.mp4");
     await user.click(screen.getByRole("button", { name: "Analyze sources" }));
 
-    expect((await screen.findAllByText("2 urls, 2 files, 0 images, 0 audio, 0 video")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("2 urls, 2 files, 2 images, 1 audio, 2 videos")).length).toBeGreaterThan(0);
     expect(screen.getByText("Recent source versions")).toBeInTheDocument();
     expect(screen.getByText("Revision 2")).toBeInTheDocument();
 
