@@ -406,14 +406,21 @@ describe("ProjectWorkspace", () => {
     const olderSelect = screen.getByLabelText("Against revision");
 
     await user.selectOptions(newerSelect, "3");
-    await user.selectOptions(olderSelect, "1");
+    await user.selectOptions(olderSelect, "2");
 
     expect(screen.getByText("Revision 3 snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Revision 1 snapshot")).toBeInTheDocument();
-    expect(screen.getAllByText("+ URL: https://example.com/launch").length).toBeGreaterThan(0);
+    expect(screen.getByText("Revision 2 snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Added in Revision 3")).toBeInTheDocument();
+    expect(screen.getByText("Removed from Revision 2")).toBeInTheDocument();
     expect(screen.getAllByText("+ URL: https://example.com/roadmap").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("- URL: https://example.com/archive").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("- File: D:/docs/archive.txt").length).toBeGreaterThan(0);
+    expect(screen.getByText("No removed sources in this compare.")).toBeInTheDocument();
+    expect(screen.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("D:/media/cover.png").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("checkbox", { name: "Show changes only" }));
+
+    expect(screen.getAllByText("D:/media/cover.png")).toHaveLength(1);
     expect(screen.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
     expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
 

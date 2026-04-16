@@ -32,31 +32,62 @@ function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevi
 }
 
 function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision) {
+  const emptyGroups = { added: [] as string[], removed: [] as string[] };
   if (!newer || !older) {
-    return [];
+    return emptyGroups;
   }
 
-  return sourceCategories.flatMap(({ key, label }) => {
-    const newerValues = newer.source_manifest?.[key] ?? [];
-    const olderValues = older.source_manifest?.[key] ?? [];
-    const olderSet = new Set(olderValues);
-    const newerSet = new Set(newerValues);
+  return sourceCategories.reduce(
+    (groups, { key, label }) => {
+      const newerValues = newer.source_manifest?.[key] ?? [];
+      const olderValues = older.source_manifest?.[key] ?? [];
+      const olderSet = new Set(olderValues);
+      const newerSet = new Set(newerValues);
 
-    return [
-      ...newerValues.filter((value) => !olderSet.has(value)).map((value) => `+ ${label}: ${value}`),
-      ...olderValues.filter((value) => !newerSet.has(value)).map((value) => `- ${label}: ${value}`),
-    ];
-  });
+      groups.added.push(
+        ...newerValues.filter((value) => !olderSet.has(value)).map((value) => `+ ${label}: ${value}`),
+      );
+      groups.removed.push(
+        ...olderValues.filter((value) => !newerSet.has(value)).map((value) => `- ${label}: ${value}`),
+      );
+
+      return groups;
+    },
+    { added: [] as string[], removed: [] as string[] },
+  );
 }
 
-function SourceManifestPanel({ revision }: { revision: SourceRevision }) {
+function filterSourceManifest(revision: SourceRevision, counterpart?: SourceRevision, changesOnly = false) {
+  if (!changesOnly || !counterpart) {
+    return revision.source_manifest;
+  }
+
+  const manifest = Object.fromEntries(
+    sourceCategories.map(({ key }) => {
+      const counterpartValues = new Set(counterpart.source_manifest?.[key] ?? []);
+      return [key, (revision.source_manifest?.[key] ?? []).filter((item) => !counterpartValues.has(item))];
+    }),
+  );
+
+  return manifest as SourceRevision["source_manifest"];
+}
+
+function SourceManifestPanel({
+  revision,
+  manifest,
+}: {
+  revision: SourceRevision;
+  manifest?: SourceRevision["source_manifest"];
+}) {
+  const sourceManifest = manifest ?? revision.source_manifest;
+
   return (
     <div className="source-detail-panel">
       {sourceCategories.map(({ key, heading }) => (
         <div key={`${revision.id}-${key}`} className="source-manifest-group">
           <h5>{heading}</h5>
           <ul>
-            {(revision.source_manifest[key] ?? []).map((item) => (
+            {(sourceManifest[key] ?? []).map((item) => (
               <li key={`${revision.id}-${key}-${item}`}>{item}</li>
             ))}
           </ul>
@@ -80,6 +111,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [expandedRevisionId, setExpandedRevisionId] = useState<number | null>(null);
   const [compareNewerRevisionId, setCompareNewerRevisionId] = useState<number | null>(null);
   const [compareOlderRevisionId, setCompareOlderRevisionId] = useState<number | null>(null);
+  const [showCompareChangesOnly, setShowCompareChangesOnly] = useState(false);
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
@@ -102,6 +134,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setExpandedRevisionId(null);
       setCompareNewerRevisionId(null);
       setCompareOlderRevisionId(null);
+      setShowCompareChangesOnly(false);
       return;
     }
 
@@ -124,6 +157,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setExpandedRevisionId(sourceRevisions[0]?.id ?? null);
         setCompareNewerRevisionId(sourceRevisions[0]?.id ?? null);
         setCompareOlderRevisionId(sourceRevisions[1]?.id ?? null);
+        setShowCompareChangesOnly(false);
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
       });
@@ -306,6 +340,14 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                       ))}
                     </select>
                   </label>
+                  <label className="source-compare-toggle">
+                    <input
+                      type="checkbox"
+                      checked={showCompareChangesOnly}
+                      onChange={(event) => setShowCompareChangesOnly(event.target.checked)}
+                    />
+                    Show changes only
+                  </label>
                 </div>
                 {(() => {
                   const newerRevision = sourceHistory.find((revision) => revision.id === compareNewerRevisionId);
@@ -318,21 +360,48 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
 
                   return (
                     <>
-                      <ul className="source-compare-diffs">
-                        {compareDiffs.map((diff) => (
-                          <li key={`compare-${newerRevision.id}-${olderRevision.id}-${diff}`}>{diff}</li>
-                        ))}
-                      </ul>
+                      <div className="source-compare-groups">
+                        <div className="source-compare-group">
+                          <h5>{`Added in Revision ${newerRevision.revision_number}`}</h5>
+                          {compareDiffs.added.length > 0 ? (
+                            <ul className="source-compare-diffs">
+                              {compareDiffs.added.map((diff) => (
+                                <li key={`compare-added-${newerRevision.id}-${olderRevision.id}-${diff}`}>{diff}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>No added sources in this compare.</p>
+                          )}
+                        </div>
+                        <div className="source-compare-group">
+                          <h5>{`Removed from Revision ${olderRevision.revision_number}`}</h5>
+                          {compareDiffs.removed.length > 0 ? (
+                            <ul className="source-compare-diffs">
+                              {compareDiffs.removed.map((diff) => (
+                                <li key={`compare-removed-${newerRevision.id}-${olderRevision.id}-${diff}`}>{diff}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p>No removed sources in this compare.</p>
+                          )}
+                        </div>
+                      </div>
                       <div className="source-compare-grid">
                         <div className="source-compare-column">
                           <h5>{`Revision ${newerRevision.revision_number} snapshot`}</h5>
                           <p>{newerRevision.insight_summary}</p>
-                          <SourceManifestPanel revision={newerRevision} />
+                          <SourceManifestPanel
+                            revision={newerRevision}
+                            manifest={filterSourceManifest(newerRevision, olderRevision, showCompareChangesOnly)}
+                          />
                         </div>
                         <div className="source-compare-column">
                           <h5>{`Revision ${olderRevision.revision_number} snapshot`}</h5>
                           <p>{olderRevision.insight_summary}</p>
-                          <SourceManifestPanel revision={olderRevision} />
+                          <SourceManifestPanel
+                            revision={olderRevision}
+                            manifest={filterSourceManifest(olderRevision, newerRevision, showCompareChangesOnly)}
+                          />
                         </div>
                       </div>
                     </>
