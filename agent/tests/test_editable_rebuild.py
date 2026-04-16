@@ -93,3 +93,48 @@ def test_build_editable_rebuild_preserves_space_below_titles(tmp_path):
     body_shape = shapes_with_text[1]
 
     assert body_shape.top >= title_shape.top + title_shape.height + Inches(0.18)
+
+
+def test_build_editable_rebuild_keeps_consecutive_list_items_on_same_indent(tmp_path):
+    blocks = [
+        {"text": "Checklist", "slide_index": 0, "x": 1, "y": 0.8, "width": 3.4, "height": 0.6, "font_size": 28},
+        {"text": "- First item", "slide_index": 0, "x": 1.2, "y": 2.0, "width": 4.2, "height": 0.45, "font_size": 18},
+        {"text": "- Second item", "slide_index": 0, "x": 1.48, "y": 2.46, "width": 4.0, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-list-indent.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+
+    first_item_shape = shapes_with_text[1]
+    second_item_shape = shapes_with_text[2]
+
+    assert first_item_shape.text_frame.paragraphs[0].level == 1
+    assert second_item_shape.text_frame.paragraphs[0].level == 1
+    assert second_item_shape.left == first_item_shape.left
+
+
+def test_build_editable_rebuild_caps_body_width_for_readability(tmp_path):
+    blocks = [
+        {"text": "Body heading", "slide_index": 0, "x": 1, "y": 0.8, "width": 3.5, "height": 0.6, "font_size": 28},
+        {
+            "text": "A very wide paragraph should be narrowed to a more readable text column in the rebuilt slide.",
+            "slide_index": 0,
+            "x": 1,
+            "y": 2.0,
+            "width": 10.5,
+            "height": 0.6,
+            "font_size": 18,
+        },
+    ]
+    output_path = tmp_path / "editable-rebuild-body-width.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+    body_shape = shapes_with_text[1]
+
+    assert body_shape.width <= Inches(8.2)

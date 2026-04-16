@@ -8,9 +8,21 @@ from app.services.reconstruct.ocr_blocks import group_ocr_blocks_by_slide_lines
 
 def apply_vertical_spacing(slide_blocks: list[dict]) -> list[dict]:
     adjusted_blocks: list[dict] = []
+    active_list_indent: float | None = None
 
     for block in slide_blocks:
         adjusted = dict(block)
+        if adjusted["text_role"] == "list_item":
+            if active_list_indent is None:
+                active_list_indent = adjusted["x"]
+            adjusted["x"] = active_list_indent
+            adjusted["width"] = min(adjusted["width"], 8.2 - adjusted["x"])
+        elif adjusted["text_role"] == "body":
+            adjusted["width"] = min(adjusted["width"], 8.2)
+            active_list_indent = None
+        else:
+            active_list_indent = None
+
         if adjusted_blocks:
             previous = adjusted_blocks[-1]
             if previous["text_role"] == "title" and adjusted["text_role"] != "title":
