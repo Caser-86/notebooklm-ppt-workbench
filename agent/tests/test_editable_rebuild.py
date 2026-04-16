@@ -218,3 +218,62 @@ def test_build_editable_rebuild_preserves_image_blocks_and_keeps_body_outside_im
     picture_shape = picture_shapes[0]
 
     assert body_shape.left + body_shape.width <= picture_shape.left - Inches(0.08)
+
+
+def test_build_editable_rebuild_formats_captions_as_secondary_text(tmp_path):
+    blocks = [
+        {"text": "Growth snapshot", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 30},
+        {
+            "text": "",
+            "slide_index": 0,
+            "x": 6.8,
+            "y": 1.5,
+            "width": 4.0,
+            "height": 2.2,
+            "content_type": "image",
+            "image_path": "tests/fixtures/slides/slide-1.png",
+        },
+        {
+            "text": "Pilot launch event, March 2026",
+            "slide_index": 0,
+            "x": 6.9,
+            "y": 3.82,
+            "width": 3.5,
+            "height": 0.35,
+            "font_size": 12,
+        },
+    ]
+    output_path = tmp_path / "editable-rebuild-caption-style.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    slide = presentation.slides[0]
+    picture_shape = [shape for shape in slide.shapes if shape.shape_type == MSO_SHAPE_TYPE.PICTURE][0]
+    text_shapes = [shape for shape in slide.shapes if hasattr(shape, "text") and shape.text.strip()]
+    caption_shape = text_shapes[-1]
+    caption_run = caption_shape.text_frame.paragraphs[0].runs[0]
+
+    assert caption_shape.left == picture_shape.left
+    assert caption_run.font.italic is True
+    assert caption_run.font.bold in (None, False)
+
+
+def test_build_editable_rebuild_uses_two_column_width_limits_for_body_blocks(tmp_path):
+    blocks = [
+        {"text": "Execution review", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 30},
+        {"text": "Left column summary", "slide_index": 0, "x": 1, "y": 2.0, "width": 6.0, "height": 0.45, "font_size": 18},
+        {"text": "Right column summary", "slide_index": 0, "x": 7.1, "y": 2.02, "width": 5.8, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-two-column-widths.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    text_shapes = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+    left_shape = text_shapes[1]
+    right_shape = text_shapes[2]
+
+    assert left_shape.width <= Inches(5.1)
+    assert right_shape.left >= Inches(6.8)
+    assert right_shape.width <= Inches(5.1)

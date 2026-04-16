@@ -65,6 +65,7 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
                 and abs(block["y"] - current_line["y"]) <= y_threshold
                 and horizontal_gap is not None
                 and horizontal_gap <= 0.6
+                and (block["x"] - current_line["x"]) <= 4.5
             )
             if not same_line_and_close:
                 current_line = {
