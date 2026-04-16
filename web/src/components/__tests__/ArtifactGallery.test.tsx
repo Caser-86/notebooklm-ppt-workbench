@@ -12,6 +12,10 @@ describe("ArtifactGallery", () => {
       />,
     );
 
+    expect(screen.getByText("Rebuilt downloads")).toBeInTheDocument();
+    expect(
+      screen.getByText("These files appear after you export the deck from NotebookLM and return here for rebuild."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Display clone" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Editable rebuild" })).toBeInTheDocument();
   });

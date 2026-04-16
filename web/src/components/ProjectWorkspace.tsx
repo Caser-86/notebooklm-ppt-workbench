@@ -14,6 +14,10 @@ export function ProjectWorkspace() {
     <main>
       <h2>Workspace</h2>
       <p>No project selected</p>
+      <section>
+        <h3>Semi-automatic mode</h3>
+        <p>This workspace prepares the prompt and rebuilds the exported deck, while you generate and export inside NotebookLM.</p>
+      </section>
       <SourceIntakePanel prompt={brief} onPromptChange={setBrief} />
       <PromptStudio
         presets={[{ id: "default", label: "Default", body: "Start here" }]}
@@ -22,6 +26,11 @@ export function ProjectWorkspace() {
         onPresetChange={setPresetId}
         onValueChange={setValue}
       />
+      <section>
+        <h3>Continue in NotebookLM</h3>
+        <p>Paste the prompt into NotebookLM and generate the deck there.</p>
+        <p>Export the deck from NotebookLM, then return here for rebuild and download.</p>
+      </section>
       <JobTimeline status="needs_attention" attentionReason="browser_login_required" />
       <ArtifactGallery
         artifacts={[
