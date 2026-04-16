@@ -16,6 +16,8 @@ def normalize_ocr_blocks(raw_blocks: list[dict]) -> list[dict]:
             {
                 "text": block["text"].strip(),
                 "slide_index": int(block.get("slide_index", 0)),
+                "content_type": block.get("content_type", "text"),
+                "image_path": block.get("image_path"),
                 "x": float(block["x"]),
                 "y": float(block["y"]),
                 "width": float(block["width"]),
@@ -37,13 +39,27 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
 
     slide_lines: list[list[dict]] = []
     for slide_index in sorted(grouped_by_slide):
+        slide_blocks = grouped_by_slide[slide_index]
+        image_blocks = [
+            {
+                **block,
+                "text_role": "image",
+            }
+            for block in slide_blocks
+            if block.get("content_type") == "image"
+        ]
+
         lines: list[dict] = []
         current_line: dict | None = None
 
-        for block in grouped_by_slide[slide_index]:
+        for block in slide_blocks:
+            if block.get("content_type") == "image":
+                continue
             if current_line is None or abs(block["y"] - current_line["y"]) > y_threshold:
                 current_line = {
                     "slide_index": slide_index,
+                    "content_type": "text",
+                    "image_path": None,
                     "text": block["text"],
                     "x": block["x"],
                     "y": block["y"],
@@ -72,6 +88,6 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
                 else:
                     line["text_role"] = "body"
 
-        slide_lines.append(lines)
+        slide_lines.append(sorted(lines + image_blocks, key=lambda item: (item["y"], item["x"])))
 
     return slide_lines

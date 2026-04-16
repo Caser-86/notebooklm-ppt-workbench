@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx import Presentation
 from pptx.util import Inches
 
@@ -178,3 +179,42 @@ def test_build_editable_rebuild_merges_consecutive_list_items_into_one_text_fram
     assert len(shapes_with_text) == 2
     assert [paragraph.text for paragraph in list_paragraphs] == ["Confirm export", "Trigger rebuild"]
     assert [paragraph.level for paragraph in list_paragraphs] == [1, 1]
+
+
+def test_build_editable_rebuild_preserves_image_blocks_and_keeps_body_outside_image(tmp_path):
+    blocks = [
+        {"text": "Launch overview", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 30},
+        {
+            "text": "",
+            "slide_index": 0,
+            "x": 7.2,
+            "y": 1.9,
+            "width": 4.0,
+            "height": 2.6,
+            "content_type": "image",
+            "image_path": "tests/fixtures/slides/slide-1.png",
+        },
+        {
+            "text": "Supporting narrative should stay clear of the image region on the right side of the slide.",
+            "slide_index": 0,
+            "x": 1,
+            "y": 2.0,
+            "width": 10.2,
+            "height": 0.6,
+            "font_size": 18,
+        },
+    ]
+    output_path = tmp_path / "editable-rebuild-image-layout.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    slide = presentation.slides[0]
+    picture_shapes = [shape for shape in slide.shapes if shape.shape_type == MSO_SHAPE_TYPE.PICTURE]
+    text_shapes = [shape for shape in slide.shapes if hasattr(shape, "text") and shape.text.strip()]
+
+    assert len(picture_shapes) == 1
+    body_shape = text_shapes[1]
+    picture_shape = picture_shapes[0]
+
+    assert body_shape.left + body_shape.width <= picture_shape.left - Inches(0.08)

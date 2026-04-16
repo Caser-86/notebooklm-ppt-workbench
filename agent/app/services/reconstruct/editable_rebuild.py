@@ -9,10 +9,14 @@ from app.services.reconstruct.ocr_blocks import group_ocr_blocks_by_slide_lines
 def apply_vertical_spacing(slide_blocks: list[dict]) -> list[dict]:
     adjusted_blocks: list[dict] = []
     active_list_indent: float | None = None
+    image_blocks: list[dict] = []
 
     for block in slide_blocks:
         adjusted = dict(block)
-        if adjusted["text_role"] == "list_item":
+        if adjusted["text_role"] == "image":
+            image_blocks.append(adjusted)
+            active_list_indent = None
+        elif adjusted["text_role"] == "list_item":
             if active_list_indent is None:
                 active_list_indent = adjusted["x"]
             adjusted["x"] = active_list_indent
@@ -23,9 +27,18 @@ def apply_vertical_spacing(slide_blocks: list[dict]) -> list[dict]:
         else:
             active_list_indent = None
 
+        if adjusted["text_role"] in {"body", "list_item"}:
+            for image in image_blocks:
+                vertical_overlap = adjusted["y"] < image["y"] + image["height"] and adjusted["y"] + adjusted["height"] > image["y"]
+                horizontal_overlap = adjusted["x"] < image["x"] + image["width"] and adjusted["x"] + adjusted["width"] > image["x"]
+                if vertical_overlap and horizontal_overlap and adjusted["x"] < image["x"]:
+                    adjusted["width"] = min(adjusted["width"], max(0.6, image["x"] - adjusted["x"] - 0.08))
+
         if adjusted_blocks:
             previous = adjusted_blocks[-1]
-            if previous["text_role"] == "title" and adjusted["text_role"] != "title":
+            if previous["text_role"] == "image" and adjusted["text_role"] in {"body", "list_item"}:
+                min_gap = 0.12
+            elif previous["text_role"] == "title" and adjusted["text_role"] != "title":
                 min_gap = 0.18
             elif adjusted["text_role"] == "list_item":
                 min_gap = 0.08
@@ -75,6 +88,17 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
     for slide_blocks in group_ocr_blocks_by_slide_lines(raw_blocks):
         slide = presentation.slides.add_slide(presentation.slide_layouts[6])
         for block in merge_consecutive_text_blocks(apply_vertical_spacing(slide_blocks)):
+            if block.get("content_type") == "image":
+                image_path = Path(block["image_path"])
+                slide.shapes.add_picture(
+                    str(image_path),
+                    left=Inches(block["x"]),
+                    top=Inches(block["y"]),
+                    width=Inches(block["width"]),
+                    height=Inches(block["height"]),
+                )
+                continue
+
             textbox = slide.shapes.add_textbox(
                 left=Inches(block["x"]),
                 top=Inches(block["y"]),
