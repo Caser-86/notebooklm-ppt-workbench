@@ -17,11 +17,20 @@ export function JobTimeline({ status, attentionReason }: JobTimelineProps) {
       : attentionReason;
 
   return (
-    <section>
-      <h3>Job status</h3>
-      <p>{statusLabel}</p>
-      {attentionLabel ? <p>{attentionLabel}</p> : null}
-      {status === "needs_attention" ? <button>I finished this in NotebookLM</button> : null}
+    <section className="workspace-section">
+      <div className="section-copy">
+        <p className="eyebrow">Status</p>
+        <h3>Job status</h3>
+      </div>
+      <div className="status-block">
+        <p className="status-pill">{statusLabel}</p>
+        {attentionLabel ? <p>{attentionLabel}</p> : null}
+        {status === "needs_attention" ? (
+          <button className="secondary-action" type="button">
+            I finished this in NotebookLM
+          </button>
+        ) : null}
+      </div>
     </section>
   );
 }

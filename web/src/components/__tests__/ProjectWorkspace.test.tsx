@@ -12,5 +12,7 @@ describe("ProjectWorkspace", () => {
     expect(screen.getByText("Continue in NotebookLM")).toBeInTheDocument();
     expect(screen.getByText("Paste the prompt into NotebookLM and generate the deck there.")).toBeInTheDocument();
     expect(screen.getByText("Export the deck from NotebookLM, then return here for rebuild and download.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open NotebookLM" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark export ready" })).toBeInTheDocument();
   });
 });

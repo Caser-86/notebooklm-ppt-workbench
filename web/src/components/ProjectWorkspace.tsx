@@ -11,10 +11,13 @@ export function ProjectWorkspace() {
   const [value, setValue] = useState("Start here");
 
   return (
-    <main>
-      <h2>Workspace</h2>
-      <p>No project selected</p>
-      <section>
+    <main className="workspace">
+      <header className="workspace-hero">
+        <p className="eyebrow">Workspace</p>
+        <h2>Workspace</h2>
+        <p>No project selected</p>
+      </header>
+      <section className="workspace-section workspace-section--intro">
         <h3>Semi-automatic mode</h3>
         <p>This workspace prepares the prompt and rebuilds the exported deck, while you generate and export inside NotebookLM.</p>
       </section>
@@ -26,10 +29,21 @@ export function ProjectWorkspace() {
         onPresetChange={setPresetId}
         onValueChange={setValue}
       />
-      <section>
-        <h3>Continue in NotebookLM</h3>
-        <p>Paste the prompt into NotebookLM and generate the deck there.</p>
-        <p>Export the deck from NotebookLM, then return here for rebuild and download.</p>
+      <section className="workspace-section workspace-section--handoff">
+        <div className="section-copy">
+          <p className="eyebrow">NotebookLM handoff</p>
+          <h3>Continue in NotebookLM</h3>
+          <p>Paste the prompt into NotebookLM and generate the deck there.</p>
+          <p>Export the deck from NotebookLM, then return here for rebuild and download.</p>
+        </div>
+        <div className="handoff-actions">
+          <button className="primary-action" type="button">
+            Open NotebookLM
+          </button>
+          <button className="secondary-action" type="button">
+            Mark export ready
+          </button>
+        </div>
       </section>
       <JobTimeline status="needs_attention" attentionReason="browser_login_required" />
       <ArtifactGallery

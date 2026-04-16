@@ -18,7 +18,12 @@ export function PromptStudio(props: PromptStudioProps) {
   }, [props.value]);
 
   return (
-    <section>
+    <section className="workspace-section">
+      <div className="section-copy">
+        <p className="eyebrow">Prompt studio</p>
+        <h3>Shape the deck before handoff</h3>
+        <p>Use presets to get a strong first draft, then tighten tone and structure before opening NotebookLM.</p>
+      </div>
       <label>
         Preset
         <select value={props.selectedPresetId} onChange={(event) => props.onPresetChange(event.target.value)}>
