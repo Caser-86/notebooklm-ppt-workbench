@@ -306,6 +306,10 @@ describe("ProjectWorkspace", () => {
     expect((await screen.findAllByText("2 urls, 2 files, 2 images, 1 audio, 2 videos")).length).toBeGreaterThan(0);
     expect(screen.getByText("Recent source versions")).toBeInTheDocument();
     expect(screen.getByText("Revision 2")).toBeInTheDocument();
+    expect(screen.getByText("+ URL: https://example.com/faq")).toBeInTheDocument();
+    expect(screen.getByText("+ File: D:/docs/faq.txt")).toBeInTheDocument();
+    expect(screen.getByText("+ Image: D:/media/gallery.png")).toBeInTheDocument();
+    expect(screen.getByText("+ Video: D:/media/demo.mp4")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });

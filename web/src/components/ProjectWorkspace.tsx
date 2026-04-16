@@ -14,6 +14,23 @@ import {
 } from "../lib/api";
 import type { DownloadArtifact, RebuildVersion, SourceRevision } from "../lib/types";
 
+function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevision) {
+  const categories = [
+    { key: "urls", label: "URL" },
+    { key: "file_paths", label: "File" },
+    { key: "image_paths", label: "Image" },
+    { key: "audio_paths", label: "Audio" },
+    { key: "video_paths", label: "Video" },
+  ] as const;
+
+  return categories.flatMap(({ key, label }) => {
+    const previousValues = new Set(previous?.source_manifest?.[key] ?? []);
+    return (current.source_manifest?.[key] ?? [])
+      .filter((value) => !previousValues.has(value))
+      .map((value) => `+ ${label}: ${value}`);
+  });
+}
+
 export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [brief, setBrief] = useState("Create a launch deck");
   const [presetId, setPresetId] = useState("default");
@@ -206,12 +223,22 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
           <div className="rebuild-history">
             <h4>Recent source versions</h4>
             <ul>
-              {sourceHistory.map((revision) => (
+              {sourceHistory.map((revision, index) => {
+                const diffs = buildSourceRevisionDiffs(revision, sourceHistory[index + 1]);
+                return (
                 <li key={revision.id}>
                   <span>{`Revision ${revision.revision_number}`}</span>
                   <span>{revision.insight_summary}</span>
+                  {diffs.length > 0 ? (
+                    <ul>
+                      {diffs.map((diff) => (
+                        <li key={`${revision.id}-${diff}`}>{diff}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         ) : null}
