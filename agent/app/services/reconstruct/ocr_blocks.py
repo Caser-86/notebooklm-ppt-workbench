@@ -50,6 +50,11 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
             current_line["height"] = max(current_line["height"], block["height"])
             current_line["font_size"] = max(current_line["font_size"], block["font_size"])
 
+        if lines:
+            slide_max_font = max(line["font_size"] for line in lines)
+            for line in lines:
+                line["text_role"] = "title" if slide_max_font >= 24 and line["font_size"] == slide_max_font else "body"
+
         slide_lines.append(lines)
 
     return slide_lines

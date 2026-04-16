@@ -21,8 +21,10 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                 height=Inches(block["height"]),
             )
             paragraph = textbox.text_frame.paragraphs[0]
-            paragraph.text = block["text"]
-            paragraph.font.size = Pt(block["font_size"])
+            run = paragraph.add_run()
+            run.text = block["text"]
+            run.font.size = Pt(block["font_size"])
+            run.font.bold = block.get("text_role") == "title"
 
     presentation.save(output_path)
     return output_path

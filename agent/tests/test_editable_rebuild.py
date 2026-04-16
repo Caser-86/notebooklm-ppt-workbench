@@ -36,3 +36,24 @@ def test_build_editable_rebuild_creates_multiple_slides_and_groups_same_line_blo
     assert len(presentation.slides) == 2
     assert slide_texts[0] == ["Quarterly update"]
     assert slide_texts[1] == ["Revenue 22%"]
+
+
+def test_build_editable_rebuild_marks_title_blocks_as_bolder_than_body(tmp_path):
+    blocks = [
+        {"text": "Market expansion", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.5, "height": 0.7, "font_size": 30},
+        {"text": "We entered three new regions this quarter.", "slide_index": 0, "x": 1, "y": 2.1, "width": 6.2, "height": 0.6, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-title-body.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+
+    title_run = shapes_with_text[0].text_frame.paragraphs[0].runs[0]
+    body_run = shapes_with_text[1].text_frame.paragraphs[0].runs[0]
+
+    assert title_run.text == "Market expansion"
+    assert title_run.font.bold is True
+    assert body_run.font.bold in (None, False)
+    assert title_run.font.size.pt > body_run.font.size.pt
