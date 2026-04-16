@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 import { ProjectWorkspace } from "../ProjectWorkspace";
@@ -408,21 +408,31 @@ describe("ProjectWorkspace", () => {
     await user.selectOptions(newerSelect, "3");
     await user.selectOptions(olderSelect, "2");
 
-    expect(screen.getByText("Revision 3 snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Revision 2 snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Added in Revision 3")).toBeInTheDocument();
-    expect(screen.getByText("Removed from Revision 2")).toBeInTheDocument();
-    expect(screen.getAllByText("+ URL: https://example.com/roadmap").length).toBeGreaterThan(0);
-    expect(screen.getByText("No removed sources in this compare.")).toBeInTheDocument();
-    expect(screen.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("D:/media/cover.png").length).toBeGreaterThan(0);
+    const comparePanel = screen.getByText("Compare revisions").closest(".source-compare-panel") as HTMLElement;
+    const compareQueries = within(comparePanel);
 
-    await user.click(screen.getByRole("checkbox", { name: "Show changes only" }));
+    expect(compareQueries.getByText("Revision 3 snapshot")).toBeInTheDocument();
+    expect(compareQueries.getByText("Revision 2 snapshot")).toBeInTheDocument();
+    expect(compareQueries.getByText("Added in Revision 3")).toBeInTheDocument();
+    expect(compareQueries.getByText("Removed from Revision 2")).toBeInTheDocument();
+    expect(compareQueries.getByText("+ URL: https://example.com/roadmap")).toBeInTheDocument();
+    expect(compareQueries.getByText("No removed sources in this compare.")).toBeInTheDocument();
+    expect(compareQueries.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
+    expect(compareQueries.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
+    expect(compareQueries.getAllByText("D:/media/cover.png").length).toBeGreaterThan(0);
 
-    expect(screen.getAllByText("D:/media/cover.png")).toHaveLength(1);
-    expect(screen.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
+    await user.click(compareQueries.getByRole("button", { name: "Images" }));
+
+    expect(compareQueries.queryByText("+ URL: https://example.com/roadmap")).not.toBeInTheDocument();
+    expect(compareQueries.queryByText("D:/docs/roadmap.txt")).not.toBeInTheDocument();
+    expect(compareQueries.getByText("No added sources in this compare.")).toBeInTheDocument();
+    expect(compareQueries.getAllByText("D:/media/cover.png").length).toBeGreaterThan(0);
+
+    await user.click(compareQueries.getByRole("checkbox", { name: "Show changes only" }));
+
+    expect(compareQueries.queryByText("D:/media/cover.png")).not.toBeInTheDocument();
+    expect(compareQueries.getByText("No added sources in this compare.")).toBeInTheDocument();
+    expect(compareQueries.getByText("No removed sources in this compare.")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });

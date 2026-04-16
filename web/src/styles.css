@@ -123,6 +123,16 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
 }
 
+.source-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.source-filter-chip {
+  padding: 0.65rem 1rem;
+}
+
 .source-compare-toggle {
   align-self: end;
   display: flex;

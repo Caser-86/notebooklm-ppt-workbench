@@ -22,6 +22,9 @@ const sourceCategories = [
   { key: "video_paths", label: "Video", heading: "Video" },
 ] as const;
 
+type SourceCategoryKey = (typeof sourceCategories)[number]["key"];
+type CompareCategoryFilter = "all" | SourceCategoryKey;
+
 function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevision) {
   return sourceCategories.flatMap(({ key, label }) => {
     const previousValues = new Set(previous?.source_manifest?.[key] ?? []);
@@ -31,7 +34,7 @@ function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevi
   });
 }
 
-function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision) {
+function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision, categoryFilter: CompareCategoryFilter = "all") {
   const emptyGroups = { added: [] as string[], removed: [] as string[] };
   if (!newer || !older) {
     return emptyGroups;
@@ -39,6 +42,10 @@ function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision)
 
   return sourceCategories.reduce(
     (groups, { key, label }) => {
+      if (categoryFilter !== "all" && key !== categoryFilter) {
+        return groups;
+      }
+
       const newerValues = newer.source_manifest?.[key] ?? [];
       const olderValues = older.source_manifest?.[key] ?? [];
       const olderSet = new Set(olderValues);
@@ -57,13 +64,27 @@ function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision)
   );
 }
 
-function filterSourceManifest(revision: SourceRevision, counterpart?: SourceRevision, changesOnly = false) {
+function filterSourceManifest(
+  revision: SourceRevision,
+  counterpart?: SourceRevision,
+  changesOnly = false,
+  categoryFilter: CompareCategoryFilter = "all",
+) {
   if (!changesOnly || !counterpart) {
-    return revision.source_manifest;
+    if (categoryFilter === "all") {
+      return revision.source_manifest;
+    }
+
+    return {
+      [categoryFilter]: revision.source_manifest?.[categoryFilter] ?? [],
+    } as SourceRevision["source_manifest"];
   }
 
   const manifest = Object.fromEntries(
     sourceCategories.map(({ key }) => {
+      if (categoryFilter !== "all" && key !== categoryFilter) {
+        return [key, []];
+      }
       const counterpartValues = new Set(counterpart.source_manifest?.[key] ?? []);
       return [key, (revision.source_manifest?.[key] ?? []).filter((item) => !counterpartValues.has(item))];
     }),
@@ -112,6 +133,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [compareNewerRevisionId, setCompareNewerRevisionId] = useState<number | null>(null);
   const [compareOlderRevisionId, setCompareOlderRevisionId] = useState<number | null>(null);
   const [showCompareChangesOnly, setShowCompareChangesOnly] = useState(false);
+  const [compareCategoryFilter, setCompareCategoryFilter] = useState<CompareCategoryFilter>("all");
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
@@ -135,6 +157,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setCompareNewerRevisionId(null);
       setCompareOlderRevisionId(null);
       setShowCompareChangesOnly(false);
+      setCompareCategoryFilter("all");
       return;
     }
 
@@ -158,6 +181,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setCompareNewerRevisionId(sourceRevisions[0]?.id ?? null);
         setCompareOlderRevisionId(sourceRevisions[1]?.id ?? null);
         setShowCompareChangesOnly(false);
+        setCompareCategoryFilter("all");
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
       });
@@ -349,10 +373,29 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     Show changes only
                   </label>
                 </div>
+                <div className="source-filter-chips">
+                  <button
+                    type="button"
+                    className={compareCategoryFilter === "all" ? "primary-action source-filter-chip" : "secondary-action source-filter-chip"}
+                    onClick={() => setCompareCategoryFilter("all")}
+                  >
+                    All
+                  </button>
+                  {sourceCategories.map(({ key, heading }) => (
+                    <button
+                      key={`filter-${key}`}
+                      type="button"
+                      className={compareCategoryFilter === key ? "primary-action source-filter-chip" : "secondary-action source-filter-chip"}
+                      onClick={() => setCompareCategoryFilter(key)}
+                    >
+                      {heading}
+                    </button>
+                  ))}
+                </div>
                 {(() => {
                   const newerRevision = sourceHistory.find((revision) => revision.id === compareNewerRevisionId);
                   const olderRevision = sourceHistory.find((revision) => revision.id === compareOlderRevisionId);
-                  const compareDiffs = buildSourceCompareDiffs(newerRevision, olderRevision);
+                  const compareDiffs = buildSourceCompareDiffs(newerRevision, olderRevision, compareCategoryFilter);
 
                   if (!newerRevision || !olderRevision) {
                     return null;
@@ -392,7 +435,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                           <p>{newerRevision.insight_summary}</p>
                           <SourceManifestPanel
                             revision={newerRevision}
-                            manifest={filterSourceManifest(newerRevision, olderRevision, showCompareChangesOnly)}
+                            manifest={filterSourceManifest(newerRevision, olderRevision, showCompareChangesOnly, compareCategoryFilter)}
                           />
                         </div>
                         <div className="source-compare-column">
@@ -400,7 +443,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                           <p>{olderRevision.insight_summary}</p>
                           <SourceManifestPanel
                             revision={olderRevision}
-                            manifest={filterSourceManifest(olderRevision, newerRevision, showCompareChangesOnly)}
+                            manifest={filterSourceManifest(olderRevision, newerRevision, showCompareChangesOnly, compareCategoryFilter)}
                           />
                         </div>
                       </div>
