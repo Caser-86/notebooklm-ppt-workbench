@@ -1,2 +1,11 @@
 .worktrees/
 .superpowers/
+node_modules/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.egg-info/
+agent/data/
+agent/downloads/
+web/dist/
