@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.util import Inches
 
 from app.services.reconstruct.editable_rebuild import build_editable_rebuild
 
@@ -57,3 +58,38 @@ def test_build_editable_rebuild_marks_title_blocks_as_bolder_than_body(tmp_path)
     assert title_run.font.bold is True
     assert body_run.font.bold in (None, False)
     assert title_run.font.size.pt > body_run.font.size.pt
+
+
+def test_build_editable_rebuild_turns_bullet_lines_into_indented_list_items(tmp_path):
+    blocks = [
+        {"text": "Plan", "slide_index": 0, "x": 1, "y": 0.8, "width": 3.4, "height": 0.6, "font_size": 28},
+        {"text": "- First checkpoint", "slide_index": 0, "x": 1.2, "y": 2.0, "width": 4.2, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-list.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+
+    list_paragraph = shapes_with_text[1].text_frame.paragraphs[0]
+
+    assert list_paragraph.level == 1
+    assert list_paragraph.runs[0].text == "First checkpoint"
+
+
+def test_build_editable_rebuild_preserves_space_below_titles(tmp_path):
+    blocks = [
+        {"text": "Growth plan", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 30},
+        {"text": "Body text begins too close in the OCR output.", "slide_index": 0, "x": 1, "y": 1.0, "width": 6, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-spacing.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+    title_shape = shapes_with_text[0]
+    body_shape = shapes_with_text[1]
+
+    assert body_shape.top >= title_shape.top + title_shape.height + Inches(0.18)

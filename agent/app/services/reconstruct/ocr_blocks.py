@@ -1,3 +1,14 @@
+def _strip_list_marker(text: str) -> str:
+    for prefix in ("- ", "• ", "* ", "· "):
+        if text.startswith(prefix):
+            return text[len(prefix) :].strip()
+    return text
+
+
+def _is_list_item_text(text: str) -> bool:
+    return _strip_list_marker(text) != text
+
+
 def normalize_ocr_blocks(raw_blocks: list[dict]) -> list[dict]:
     normalized = []
     for block in raw_blocks:
@@ -53,7 +64,13 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
         if lines:
             slide_max_font = max(line["font_size"] for line in lines)
             for line in lines:
-                line["text_role"] = "title" if slide_max_font >= 24 and line["font_size"] == slide_max_font else "body"
+                if slide_max_font >= 24 and line["font_size"] == slide_max_font and not _is_list_item_text(line["text"]):
+                    line["text_role"] = "title"
+                elif _is_list_item_text(line["text"]):
+                    line["text_role"] = "list_item"
+                    line["text"] = _strip_list_marker(line["text"])
+                else:
+                    line["text_role"] = "body"
 
         slide_lines.append(lines)
 
