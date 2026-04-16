@@ -14,21 +14,56 @@ import {
 } from "../lib/api";
 import type { DownloadArtifact, RebuildVersion, SourceRevision } from "../lib/types";
 
-function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevision) {
-  const categories = [
-    { key: "urls", label: "URL" },
-    { key: "file_paths", label: "File" },
-    { key: "image_paths", label: "Image" },
-    { key: "audio_paths", label: "Audio" },
-    { key: "video_paths", label: "Video" },
-  ] as const;
+const sourceCategories = [
+  { key: "urls", label: "URL", heading: "URLs" },
+  { key: "file_paths", label: "File", heading: "Files" },
+  { key: "image_paths", label: "Image", heading: "Images" },
+  { key: "audio_paths", label: "Audio", heading: "Audio" },
+  { key: "video_paths", label: "Video", heading: "Video" },
+] as const;
 
-  return categories.flatMap(({ key, label }) => {
+function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevision) {
+  return sourceCategories.flatMap(({ key, label }) => {
     const previousValues = new Set(previous?.source_manifest?.[key] ?? []);
     return (current.source_manifest?.[key] ?? [])
       .filter((value) => !previousValues.has(value))
       .map((value) => `+ ${label}: ${value}`);
   });
+}
+
+function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision) {
+  if (!newer || !older) {
+    return [];
+  }
+
+  return sourceCategories.flatMap(({ key, label }) => {
+    const newerValues = newer.source_manifest?.[key] ?? [];
+    const olderValues = older.source_manifest?.[key] ?? [];
+    const olderSet = new Set(olderValues);
+    const newerSet = new Set(newerValues);
+
+    return [
+      ...newerValues.filter((value) => !olderSet.has(value)).map((value) => `+ ${label}: ${value}`),
+      ...olderValues.filter((value) => !newerSet.has(value)).map((value) => `- ${label}: ${value}`),
+    ];
+  });
+}
+
+function SourceManifestPanel({ revision }: { revision: SourceRevision }) {
+  return (
+    <div className="source-detail-panel">
+      {sourceCategories.map(({ key, heading }) => (
+        <div key={`${revision.id}-${key}`} className="source-manifest-group">
+          <h5>{heading}</h5>
+          <ul>
+            {(revision.source_manifest[key] ?? []).map((item) => (
+              <li key={`${revision.id}-${key}-${item}`}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
@@ -43,6 +78,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [insightSummary, setInsightSummary] = useState("");
   const [sourceHistory, setSourceHistory] = useState<SourceRevision[]>([]);
   const [expandedRevisionId, setExpandedRevisionId] = useState<number | null>(null);
+  const [compareNewerRevisionId, setCompareNewerRevisionId] = useState<number | null>(null);
+  const [compareOlderRevisionId, setCompareOlderRevisionId] = useState<number | null>(null);
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
@@ -63,6 +100,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setInsightSummary("");
       setSourceHistory([]);
       setExpandedRevisionId(null);
+      setCompareNewerRevisionId(null);
+      setCompareOlderRevisionId(null);
       return;
     }
 
@@ -83,6 +122,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setInsightSummary(detail.insight_summary || "");
         setSourceHistory(sourceRevisions);
         setExpandedRevisionId(sourceRevisions[0]?.id ?? null);
+        setCompareNewerRevisionId(sourceRevisions[0]?.id ?? null);
+        setCompareOlderRevisionId(sourceRevisions[1]?.id ?? null);
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
       });
@@ -206,15 +247,20 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               });
               startTransition(() => {
                 setInsightSummary(payload.insight_summary);
-                setSourceHistory((current) => [
-                  {
-                    id: payload.revision_number,
-                    revision_number: payload.revision_number,
-                    source_manifest: payload.source_manifest,
-                    insight_summary: payload.insight_summary,
-                  },
-                  ...current,
-                ]);
+                setSourceHistory((current) => {
+                  const nextHistory = [
+                    {
+                      id: payload.revision_number,
+                      revision_number: payload.revision_number,
+                      source_manifest: payload.source_manifest,
+                      insight_summary: payload.insight_summary,
+                    },
+                    ...current,
+                  ];
+                  setCompareNewerRevisionId(nextHistory[0]?.id ?? null);
+                  setCompareOlderRevisionId(nextHistory[1]?.id ?? null);
+                  return nextHistory;
+                });
                 setExpandedRevisionId(payload.revision_number);
               });
             }}
@@ -226,6 +272,74 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         {sourceHistory.length > 0 ? (
           <div className="rebuild-history">
             <h4>Recent source versions</h4>
+            {sourceHistory.length > 1 ? (
+              <div className="source-compare-panel">
+                <div className="section-copy">
+                  <p className="eyebrow">Compare</p>
+                  <h4>Compare revisions</h4>
+                  <p>Review any two source snapshots side by side before generating the next NotebookLM draft.</p>
+                </div>
+                <div className="source-compare-controls">
+                  <label>
+                    Compare newer revision
+                    <select
+                      value={compareNewerRevisionId ?? ""}
+                      onChange={(event) => setCompareNewerRevisionId(Number(event.target.value))}
+                    >
+                      {sourceHistory.map((revision) => (
+                        <option key={`newer-${revision.id}`} value={revision.id}>
+                          {`Revision ${revision.revision_number}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Against revision
+                    <select
+                      value={compareOlderRevisionId ?? ""}
+                      onChange={(event) => setCompareOlderRevisionId(Number(event.target.value))}
+                    >
+                      {sourceHistory.map((revision) => (
+                        <option key={`older-${revision.id}`} value={revision.id}>
+                          {`Revision ${revision.revision_number}`}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {(() => {
+                  const newerRevision = sourceHistory.find((revision) => revision.id === compareNewerRevisionId);
+                  const olderRevision = sourceHistory.find((revision) => revision.id === compareOlderRevisionId);
+                  const compareDiffs = buildSourceCompareDiffs(newerRevision, olderRevision);
+
+                  if (!newerRevision || !olderRevision) {
+                    return null;
+                  }
+
+                  return (
+                    <>
+                      <ul className="source-compare-diffs">
+                        {compareDiffs.map((diff) => (
+                          <li key={`compare-${newerRevision.id}-${olderRevision.id}-${diff}`}>{diff}</li>
+                        ))}
+                      </ul>
+                      <div className="source-compare-grid">
+                        <div className="source-compare-column">
+                          <h5>{`Revision ${newerRevision.revision_number} snapshot`}</h5>
+                          <p>{newerRevision.insight_summary}</p>
+                          <SourceManifestPanel revision={newerRevision} />
+                        </div>
+                        <div className="source-compare-column">
+                          <h5>{`Revision ${olderRevision.revision_number} snapshot`}</h5>
+                          <p>{olderRevision.insight_summary}</p>
+                          <SourceManifestPanel revision={olderRevision} />
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            ) : null}
             <ul>
               {sourceHistory.map((revision, index) => {
                 const diffs = buildSourceRevisionDiffs(revision, sourceHistory[index + 1]);
@@ -250,18 +364,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     </ul>
                   ) : null}
                   {expandedRevisionId === revision.id ? (
-                    <div className="source-detail-panel">
-                      <h5>URLs</h5>
-                      <ul>{(revision.source_manifest.urls ?? []).map((item) => <li key={`${revision.id}-url-${item}`}>{item}</li>)}</ul>
-                      <h5>Files</h5>
-                      <ul>{(revision.source_manifest.file_paths ?? []).map((item) => <li key={`${revision.id}-file-${item}`}>{item}</li>)}</ul>
-                      <h5>Images</h5>
-                      <ul>{(revision.source_manifest.image_paths ?? []).map((item) => <li key={`${revision.id}-image-${item}`}>{item}</li>)}</ul>
-                      <h5>Audio</h5>
-                      <ul>{(revision.source_manifest.audio_paths ?? []).map((item) => <li key={`${revision.id}-audio-${item}`}>{item}</li>)}</ul>
-                      <h5>Video</h5>
-                      <ul>{(revision.source_manifest.video_paths ?? []).map((item) => <li key={`${revision.id}-video-${item}`}>{item}</li>)}</ul>
-                    </div>
+                    <SourceManifestPanel revision={revision} />
                   ) : null}
                 </li>
                 );

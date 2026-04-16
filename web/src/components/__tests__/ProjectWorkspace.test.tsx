@@ -305,25 +305,117 @@ describe("ProjectWorkspace", () => {
 
     expect((await screen.findAllByText("2 urls, 2 files, 2 images, 1 audio, 2 videos")).length).toBeGreaterThan(0);
     expect(screen.getByText("Recent source versions")).toBeInTheDocument();
-    expect(screen.getByText("Revision 2")).toBeInTheDocument();
-    expect(screen.getByText("+ URL: https://example.com/faq")).toBeInTheDocument();
-    expect(screen.getByText("+ File: D:/docs/faq.txt")).toBeInTheDocument();
-    expect(screen.getByText("+ Image: D:/media/gallery.png")).toBeInTheDocument();
-    expect(screen.getByText("+ Video: D:/media/demo.mp4")).toBeInTheDocument();
+    expect(screen.getAllByText("Revision 2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ URL: https://example.com/faq").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ File: D:/docs/faq.txt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ Image: D:/media/gallery.png").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ Video: D:/media/demo.mp4").length).toBeGreaterThan(0);
 
-    expect(screen.getByText("URLs")).toBeInTheDocument();
-    expect(screen.getByText("Files")).toBeInTheDocument();
-    expect(screen.getByText("Images")).toBeInTheDocument();
-    expect(screen.getByText("Audio")).toBeInTheDocument();
-    expect(screen.getByText("Video")).toBeInTheDocument();
-    expect(screen.getByText("https://example.com/launch")).toBeInTheDocument();
-    expect(screen.getByText("D:/docs/faq.txt")).toBeInTheDocument();
-    expect(screen.getByText("D:/media/gallery.png")).toBeInTheDocument();
+    expect(screen.getAllByText("URLs").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Files").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Images").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Audio").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Video").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("https://example.com/launch").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("D:/docs/faq.txt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("D:/media/gallery.png").length).toBeGreaterThan(0);
     expect(screen.getAllByText("D:/media/launch.mp3").length).toBeGreaterThan(0);
-    expect(screen.getByText("D:/media/demo.mp4")).toBeInTheDocument();
+    expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "Show full sources for Revision 1" }));
-    expect(screen.getByText("URLs")).toBeInTheDocument();
+    expect(screen.getAllByText("URLs").length).toBeGreaterThan(0);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("compares two source revisions side by side", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return {
+          json: async () => [
+            {
+              id: 3,
+              revision_number: 3,
+              source_manifest: {
+                urls: ["https://example.com/launch", "https://example.com/roadmap"],
+                file_paths: ["D:/docs/launch.txt", "D:/docs/roadmap.txt"],
+                image_paths: ["D:/media/cover.png"],
+                audio_paths: ["D:/media/voice.mp3"],
+                video_paths: ["D:/media/demo.mp4"],
+              },
+              insight_summary: "2 urls, 2 files, 1 image, 1 audio, 1 video",
+            },
+            {
+              id: 2,
+              revision_number: 2,
+              source_manifest: {
+                urls: ["https://example.com/launch"],
+                file_paths: ["D:/docs/launch.txt"],
+                image_paths: ["D:/media/cover.png"],
+                audio_paths: [],
+                video_paths: [],
+              },
+              insight_summary: "1 url, 1 file, 1 image, 0 audio, 0 video",
+            },
+            {
+              id: 1,
+              revision_number: 1,
+              source_manifest: {
+                urls: ["https://example.com/archive"],
+                file_paths: ["D:/docs/archive.txt"],
+                image_paths: [],
+                audio_paths: [],
+                video_paths: [],
+              },
+              insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+            },
+          ],
+        };
+      }
+      if (url.endsWith("/projects/6")) {
+        return {
+          json: async () => ({
+            id: 6,
+            title: "Compare deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Compare brief",
+            prompt_draft: "Compare prompt",
+            source_manifest: {
+              urls: ["https://example.com/launch"],
+              file_paths: ["D:/docs/launch.txt"],
+            },
+            insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={6} />);
+
+    expect(await screen.findByText("Compare revisions")).toBeInTheDocument();
+    const newerSelect = screen.getByLabelText("Compare newer revision");
+    const olderSelect = screen.getByLabelText("Against revision");
+
+    await user.selectOptions(newerSelect, "3");
+    await user.selectOptions(olderSelect, "1");
+
+    expect(screen.getByText("Revision 3 snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Revision 1 snapshot")).toBeInTheDocument();
+    expect(screen.getAllByText("+ URL: https://example.com/launch").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ URL: https://example.com/roadmap").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("- URL: https://example.com/archive").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("- File: D:/docs/archive.txt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
 
     vi.unstubAllGlobals();
   });

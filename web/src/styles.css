@@ -100,6 +100,45 @@ body {
   margin-top: 0.25rem;
 }
 
+.rebuild-history,
+.source-compare-panel,
+.source-compare-grid,
+.source-compare-column,
+.source-manifest-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.source-compare-panel {
+  padding: 1rem;
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.56);
+  margin-bottom: 1rem;
+}
+
+.source-compare-controls {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.source-compare-diffs {
+  gap: 0.5rem;
+}
+
+.source-compare-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.source-compare-column,
+.source-detail-panel {
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(248, 249, 252, 0.88);
+  border: 1px solid rgba(23, 32, 51, 0.08);
+}
+
 .status-block {
   display: grid;
   gap: 0.75rem;
