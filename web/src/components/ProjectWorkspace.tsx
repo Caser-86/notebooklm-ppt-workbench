@@ -42,6 +42,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [videoFilePaths, setVideoFilePaths] = useState("");
   const [insightSummary, setInsightSummary] = useState("");
   const [sourceHistory, setSourceHistory] = useState<SourceRevision[]>([]);
+  const [expandedRevisionId, setExpandedRevisionId] = useState<number | null>(null);
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
@@ -61,6 +62,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setVideoFilePaths("");
       setInsightSummary("");
       setSourceHistory([]);
+      setExpandedRevisionId(null);
       return;
     }
 
@@ -80,6 +82,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setVideoFilePaths((detail.source_manifest?.video_paths ?? []).join("\n"));
         setInsightSummary(detail.insight_summary || "");
         setSourceHistory(sourceRevisions);
+        setExpandedRevisionId(sourceRevisions[0]?.id ?? null);
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
       });
@@ -212,6 +215,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                   },
                   ...current,
                 ]);
+                setExpandedRevisionId(payload.revision_number);
               });
             }}
           >
@@ -229,12 +233,35 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                 <li key={revision.id}>
                   <span>{`Revision ${revision.revision_number}`}</span>
                   <span>{revision.insight_summary}</span>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() => setExpandedRevisionId((current) => (current === revision.id ? null : revision.id))}
+                  >
+                    {expandedRevisionId === revision.id
+                      ? `Hide full sources for Revision ${revision.revision_number}`
+                      : `Show full sources for Revision ${revision.revision_number}`}
+                  </button>
                   {diffs.length > 0 ? (
                     <ul>
                       {diffs.map((diff) => (
                         <li key={`${revision.id}-${diff}`}>{diff}</li>
                       ))}
                     </ul>
+                  ) : null}
+                  {expandedRevisionId === revision.id ? (
+                    <div className="source-detail-panel">
+                      <h5>URLs</h5>
+                      <ul>{(revision.source_manifest.urls ?? []).map((item) => <li key={`${revision.id}-url-${item}`}>{item}</li>)}</ul>
+                      <h5>Files</h5>
+                      <ul>{(revision.source_manifest.file_paths ?? []).map((item) => <li key={`${revision.id}-file-${item}`}>{item}</li>)}</ul>
+                      <h5>Images</h5>
+                      <ul>{(revision.source_manifest.image_paths ?? []).map((item) => <li key={`${revision.id}-image-${item}`}>{item}</li>)}</ul>
+                      <h5>Audio</h5>
+                      <ul>{(revision.source_manifest.audio_paths ?? []).map((item) => <li key={`${revision.id}-audio-${item}`}>{item}</li>)}</ul>
+                      <h5>Video</h5>
+                      <ul>{(revision.source_manifest.video_paths ?? []).map((item) => <li key={`${revision.id}-video-${item}`}>{item}</li>)}</ul>
+                    </div>
                   ) : null}
                 </li>
                 );

@@ -311,6 +311,20 @@ describe("ProjectWorkspace", () => {
     expect(screen.getByText("+ Image: D:/media/gallery.png")).toBeInTheDocument();
     expect(screen.getByText("+ Video: D:/media/demo.mp4")).toBeInTheDocument();
 
+    expect(screen.getByText("URLs")).toBeInTheDocument();
+    expect(screen.getByText("Files")).toBeInTheDocument();
+    expect(screen.getByText("Images")).toBeInTheDocument();
+    expect(screen.getByText("Audio")).toBeInTheDocument();
+    expect(screen.getByText("Video")).toBeInTheDocument();
+    expect(screen.getByText("https://example.com/launch")).toBeInTheDocument();
+    expect(screen.getByText("D:/docs/faq.txt")).toBeInTheDocument();
+    expect(screen.getByText("D:/media/gallery.png")).toBeInTheDocument();
+    expect(screen.getAllByText("D:/media/launch.mp3").length).toBeGreaterThan(0);
+    expect(screen.getByText("D:/media/demo.mp4")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show full sources for Revision 1" }));
+    expect(screen.getByText("URLs")).toBeInTheDocument();
+
     vi.unstubAllGlobals();
   });
 });
