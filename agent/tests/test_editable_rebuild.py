@@ -138,3 +138,25 @@ def test_build_editable_rebuild_caps_body_width_for_readability(tmp_path):
     body_shape = shapes_with_text[1]
 
     assert body_shape.width <= Inches(8.2)
+
+
+def test_build_editable_rebuild_merges_consecutive_body_blocks_into_one_text_frame(tmp_path):
+    blocks = [
+        {"text": "Expansion update", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 30},
+        {"text": "We launched three pilots in Southeast Asia.", "slide_index": 0, "x": 1, "y": 2.0, "width": 6.1, "height": 0.45, "font_size": 18},
+        {"text": "Each pilot now has local distribution support.", "slide_index": 0, "x": 1.02, "y": 2.55, "width": 6.0, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-body-paragraphs.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    shapes_with_text = [shape for shape in presentation.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+    body_shape = shapes_with_text[1]
+    body_paragraphs = [paragraph.text for paragraph in body_shape.text_frame.paragraphs if paragraph.text.strip()]
+
+    assert len(shapes_with_text) == 2
+    assert body_paragraphs == [
+        "We launched three pilots in Southeast Asia.",
+        "Each pilot now has local distribution support.",
+    ]

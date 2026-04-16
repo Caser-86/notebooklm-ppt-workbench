@@ -39,6 +39,34 @@ def apply_vertical_spacing(slide_blocks: list[dict]) -> list[dict]:
     return adjusted_blocks
 
 
+def merge_consecutive_body_blocks(slide_blocks: list[dict]) -> list[dict]:
+    merged_blocks: list[dict] = []
+
+    for block in slide_blocks:
+        current = dict(block)
+        current["paragraphs"] = [dict(block)]
+
+        if merged_blocks:
+            previous = merged_blocks[-1]
+            same_body_flow = (
+                previous["text_role"] == "body"
+                and current["text_role"] == "body"
+                and abs(previous["x"] - current["x"]) <= 0.12
+                and abs(previous["width"] - current["width"]) <= 0.6
+                and abs(previous["font_size"] - current["font_size"]) <= 1.0
+            )
+            if same_body_flow:
+                previous["paragraphs"].append(dict(block))
+                bottom_edge = max(previous["y"] + previous["height"], current["y"] + current["height"])
+                previous["height"] = bottom_edge - previous["y"]
+                previous["width"] = max(previous["width"], current["width"])
+                continue
+
+        merged_blocks.append(current)
+
+    return merged_blocks
+
+
 def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
     presentation = Presentation()
     presentation.slide_width = Inches(13.333)
@@ -46,19 +74,24 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
 
     for slide_blocks in group_ocr_blocks_by_slide_lines(raw_blocks):
         slide = presentation.slides.add_slide(presentation.slide_layouts[6])
-        for block in apply_vertical_spacing(slide_blocks):
+        for block in merge_consecutive_body_blocks(apply_vertical_spacing(slide_blocks)):
             textbox = slide.shapes.add_textbox(
                 left=Inches(block["x"]),
                 top=Inches(block["y"]),
                 width=Inches(block["width"]),
                 height=Inches(block["height"]),
             )
-            paragraph = textbox.text_frame.paragraphs[0]
-            paragraph.level = 1 if block.get("text_role") == "list_item" else 0
-            run = paragraph.add_run()
-            run.text = block["text"]
-            run.font.size = Pt(block["font_size"])
-            run.font.bold = block.get("text_role") == "title"
+            text_frame = textbox.text_frame
+            text_frame.clear()
+
+            paragraphs = block.get("paragraphs", [block])
+            for index, paragraph_block in enumerate(paragraphs):
+                paragraph = text_frame.paragraphs[0] if index == 0 else text_frame.add_paragraph()
+                paragraph.level = 1 if paragraph_block.get("text_role") == "list_item" else 0
+                run = paragraph.add_run()
+                run.text = paragraph_block["text"]
+                run.font.size = Pt(paragraph_block["font_size"])
+                run.font.bold = paragraph_block.get("text_role") == "title"
 
     presentation.save(output_path)
     return output_path
