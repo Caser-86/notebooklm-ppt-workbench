@@ -1,0 +1,8 @@
+{
+  "name": "notebooklm-ppt-workbench",
+  "private": true,
+  "scripts": {
+    "agent:test": "cd agent && python -m pytest",
+    "agent:dev": "cd agent && uvicorn app.main:app --reload"
+  }
+}

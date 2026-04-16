@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "notebooklm-ppt-agent"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.116,<0.117",
+  "uvicorn>=0.35,<0.36",
+  "sqlmodel>=0.0.22,<0.0.23",
+  "pydantic-settings>=2.10,<2.11",
+  "httpx>=0.28,<0.29"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<8.4"
+]
