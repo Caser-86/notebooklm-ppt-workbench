@@ -187,6 +187,34 @@ def test_analyze_rebuild_layout_detects_first_column_cells_that_span_two_rows():
     assert table_block["cells"][2][1]["text"] == "EMEA"
 
 
+def test_analyze_rebuild_layout_detects_first_column_cells_that_span_three_rows():
+    blocks = [
+        {"text": "Segment performance", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 1.6, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.5, "y": 1.6, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 5.7, "y": 1.6, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.3, "width": 2.0, "height": 1.65, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 3.5, "y": 2.3, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 5.7, "y": 2.3, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "EMEA", "slide_index": 0, "x": 3.5, "y": 2.9, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "$1.8M", "slide_index": 0, "x": 5.7, "y": 2.9, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "Americas", "slide_index": 0, "x": 3.5, "y": 3.5, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "$3.1M", "slide_index": 0, "x": 5.7, "y": 3.5, "width": 1.4, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    table_block = slides[0][1]
+
+    assert table_block["rows"] == 4
+    assert table_block["cols"] == 3
+    assert table_block["cells"][1][0]["text"] == "Enterprise"
+    assert table_block["cells"][1][0]["rowspan"] == 3
+    assert table_block["cells"][2][0]["merged"] is True
+    assert table_block["cells"][3][0]["merged"] is True
+    assert table_block["cells"][3][1]["text"] == "Americas"
+    assert table_block["cells"][3][2]["text"] == "$3.1M"
+
+
 def test_analyze_rebuild_layout_detects_two_level_table_headers():
     blocks = [
         {"text": "Business review", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
