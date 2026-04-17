@@ -333,3 +333,41 @@ def test_analyze_rebuild_layout_detects_multiple_non_overlapping_cross_merges():
     assert table_block["cells"][5][0]["merged"] is True
     assert table_block["cells"][5][1]["merged"] is True
     assert table_block["cells"][5][2]["text"] == "71%"
+
+
+def test_analyze_rebuild_layout_detects_freer_cross_merge_combinations_without_conflicts():
+    blocks = [
+        {"text": "Portfolio review", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 7.4, "height": 0.6, "font_size": 26},
+        {"text": "Commercial", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.8, "height": 0.45, "font_size": 18},
+        {"text": "Operations", "slide_index": 0, "x": 5.8, "y": 1.5, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "Customer", "slide_index": 0, "x": 7.7, "y": 1.5, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.4, "y": 2.0, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "Utilization", "slide_index": 0, "x": 5.8, "y": 2.0, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "NPS", "slide_index": 0, "x": 7.7, "y": 2.0, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "APAC + EMEA", "slide_index": 0, "x": 3.4, "y": 2.7, "width": 1.8, "height": 1.0, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.8, "y": 2.7, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "57", "slide_index": 0, "x": 7.7, "y": 2.7, "width": 1.5, "height": 1.0, "font_size": 18},
+        {"text": "79%", "slide_index": 0, "x": 5.8, "y": 3.3, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "Consumer", "slide_index": 0, "x": 1.0, "y": 4.0, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "Americas + LATAM", "slide_index": 0, "x": 3.4, "y": 4.0, "width": 1.8, "height": 1.0, "font_size": 18},
+        {"text": "74%", "slide_index": 0, "x": 5.8, "y": 4.0, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "49", "slide_index": 0, "x": 7.7, "y": 4.0, "width": 1.5, "height": 1.0, "font_size": 18},
+        {"text": "71%", "slide_index": 0, "x": 5.8, "y": 4.6, "width": 1.6, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    table_block = slides[0][1]
+
+    assert table_block["rows"] == 6
+    assert table_block["cols"] == 4
+    assert table_block["header_rows"] == 2
+    assert table_block["cells"][0][0]["colspan"] == 2
+    assert table_block["cells"][2][0]["rowspan"] == 2
+    assert table_block["cells"][2][1]["rowspan"] == 2
+    assert table_block["cells"][2][3]["rowspan"] == 2
+    assert table_block["cells"][4][0]["rowspan"] == 2
+    assert table_block["cells"][4][1]["rowspan"] == 2
+    assert table_block["cells"][4][3]["rowspan"] == 2
+    assert table_block["cells"][5][2]["text"] == "71%"

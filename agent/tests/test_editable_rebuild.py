@@ -580,3 +580,43 @@ def test_build_editable_rebuild_handles_multiple_non_overlapping_cross_merges(tm
     assert 'rowSpan="2"' in table.cell(4, 0)._tc.xml
     assert 'rowSpan="2"' in table.cell(4, 1)._tc.xml
     assert table.cell(5, 2).text == "71%"
+
+
+def test_build_editable_rebuild_handles_freer_cross_merge_combinations_without_conflicts(tmp_path):
+    blocks = [
+        {"text": "Portfolio review", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 7.4, "height": 0.6, "font_size": 26},
+        {"text": "Commercial", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.8, "height": 0.45, "font_size": 18},
+        {"text": "Operations", "slide_index": 0, "x": 5.8, "y": 1.5, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "Customer", "slide_index": 0, "x": 7.7, "y": 1.5, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.4, "y": 2.0, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "Utilization", "slide_index": 0, "x": 5.8, "y": 2.0, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "NPS", "slide_index": 0, "x": 7.7, "y": 2.0, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "APAC + EMEA", "slide_index": 0, "x": 3.4, "y": 2.7, "width": 1.8, "height": 1.0, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.8, "y": 2.7, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "57", "slide_index": 0, "x": 7.7, "y": 2.7, "width": 1.5, "height": 1.0, "font_size": 18},
+        {"text": "79%", "slide_index": 0, "x": 5.8, "y": 3.3, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "Consumer", "slide_index": 0, "x": 1.0, "y": 4.0, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "Americas + LATAM", "slide_index": 0, "x": 3.4, "y": 4.0, "width": 1.8, "height": 1.0, "font_size": 18},
+        {"text": "74%", "slide_index": 0, "x": 5.8, "y": 4.0, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "49", "slide_index": 0, "x": 7.7, "y": 4.0, "width": 1.5, "height": 1.0, "font_size": 18},
+        {"text": "71%", "slide_index": 0, "x": 5.8, "y": 4.6, "width": 1.6, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-freer-cross-merge.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert len(table.rows) == 6
+    assert len(table.columns) == 4
+    assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(2, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(2, 1)._tc.xml
+    assert 'rowSpan="2"' in table.cell(2, 3)._tc.xml
+    assert 'rowSpan="2"' in table.cell(4, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(4, 1)._tc.xml
+    assert 'rowSpan="2"' in table.cell(4, 3)._tc.xml
+    assert table.cell(5, 2).text == "71%"
