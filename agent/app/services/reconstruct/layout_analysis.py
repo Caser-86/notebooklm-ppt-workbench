@@ -39,12 +39,20 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
         row_index = min(range(len(row_positions)), key=lambda index: abs(block["y"] - row_positions[index]))
         column_index = min(range(len(column_positions)), key=lambda index: abs(block["x"] - column_positions[index]))
         block_right = block["x"] + block["width"]
+        block_bottom = block["y"] + block["height"]
         colspan = 1
         for next_column in range(column_index + 1, len(column_positions)):
             if block_right >= column_positions[next_column] + 0.25:
                 colspan += 1
             else:
                 break
+        rowspan = 1
+        if column_index == 0:
+            for next_row in range(row_index + 1, min(len(row_positions), row_index + 2)):
+                if block_bottom >= row_positions[next_row] + 0.15:
+                    rowspan += 1
+                else:
+                    break
 
         grid_key = (row_index, column_index)
         if grid_key in grid:
@@ -54,12 +62,16 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
             "text": block["text"],
             "font_size": block["font_size"],
             "colspan": colspan,
+            "rowspan": rowspan,
         }
-        for merged_column in range(column_index + 1, column_index + colspan):
-            merged_key = (row_index, merged_column)
-            if merged_key in grid:
-                return slide_blocks
-            grid[merged_key] = {"merged": True}
+        for covered_row in range(row_index, row_index + rowspan):
+            for covered_column in range(column_index, column_index + colspan):
+                if covered_row == row_index and covered_column == column_index:
+                    continue
+                merged_key = (covered_row, covered_column)
+                if merged_key in grid:
+                    return slide_blocks
+                grid[merged_key] = {"merged": True}
 
     expected_slots = len(row_positions) * len(column_positions)
     if len(grid) != expected_slots:

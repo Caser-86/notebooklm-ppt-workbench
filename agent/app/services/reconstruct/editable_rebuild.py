@@ -91,8 +91,9 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                             continue
                         cell = table.cell(row_index, column_index)
                         colspan = int(cell_data.get("colspan", 1))
-                        if colspan > 1:
-                            cell.merge(table.cell(row_index, column_index + colspan - 1))
+                        rowspan = int(cell_data.get("rowspan", 1))
+                        if colspan > 1 or rowspan > 1:
+                            cell.merge(table.cell(row_index + rowspan - 1, column_index + colspan - 1))
                         style_table_cell(cell, is_header=row_index == 0)
                         text_frame = cell.text_frame
                         text_frame.clear()

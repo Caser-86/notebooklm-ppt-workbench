@@ -397,3 +397,32 @@ def test_build_editable_rebuild_merges_header_cells_across_columns(tmp_path):
     assert table.cell(2, 0).text == "APAC"
     assert table.cell(2, 1).text == "$2.4M"
     assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
+
+
+def test_build_editable_rebuild_merges_first_column_cells_across_rows(tmp_path):
+    blocks = [
+        {"text": "Segment performance", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 1.6, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.5, "y": 1.6, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 5.7, "y": 1.6, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.3, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 3.5, "y": 2.3, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 5.7, "y": 2.3, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "EMEA", "slide_index": 0, "x": 3.5, "y": 2.9, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "$1.8M", "slide_index": 0, "x": 5.7, "y": 2.9, "width": 1.4, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-table-rowspan.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert len(table.rows) == 3
+    assert len(table.columns) == 3
+    assert table.cell(1, 0).text == "Enterprise"
+    assert table.cell(1, 1).text == "APAC"
+    assert table.cell(1, 2).text == "$2.4M"
+    assert table.cell(2, 1).text == "EMEA"
+    assert table.cell(2, 2).text == "$1.8M"
+    assert 'rowSpan="2"' in table.cell(1, 0)._tc.xml
