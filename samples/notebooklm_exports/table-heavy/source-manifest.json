@@ -1,0 +1,12 @@
+{
+  "scenario": "table-heavy",
+  "goal": "Validate editable table reconstruction and merged-cell handling.",
+  "placeholders": {
+    "urls": [
+      "https://example.com/metrics"
+    ],
+    "files": [
+      "D:/replace/with/local/metrics-brief.docx"
+    ]
+  }
+}

@@ -52,6 +52,12 @@ Include grouped headers or merged cells if possible.
 3. Icon card slide
 Small icon plus title plus short description, repeated across the slide.
 
+Recommended sample directories in this repo:
+
+1. `samples/notebooklm_exports/link-heavy/`
+2. `samples/notebooklm_exports/table-heavy/`
+3. `samples/notebooklm_exports/icon-card/`
+
 ## Pass Criteria
 
 The build is acceptable for `V1` if all of the following are true:

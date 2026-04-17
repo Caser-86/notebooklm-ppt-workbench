@@ -1,0 +1,11 @@
+{
+  "scenario": "link-heavy",
+  "goal": "Validate source links, prompt handoff, and text-first editable rebuild.",
+  "placeholders": {
+    "urls": [
+      "https://example.com/article-1",
+      "https://example.com/article-2",
+      "https://example.com/article-3"
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "scenario": "icon-card",
+  "goal": "Validate icon-card grouping and editable reconstruction of image-plus-text cards.",
+  "placeholders": {
+    "urls": [
+      "https://example.com/product-overview"
+    ],
+    "images": [
+      "D:/replace/with/local/icon-sheet.png"
+    ]
+  }
+}

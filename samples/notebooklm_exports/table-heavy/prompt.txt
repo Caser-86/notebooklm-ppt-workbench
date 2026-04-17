@@ -1,0 +1,1 @@
+Replace this file with the final prompt used for the table-heavy acceptance sample.
