@@ -39,7 +39,14 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
 
     slide_lines: list[list[dict]] = []
     for slide_index in sorted(grouped_by_slide):
-        slide_blocks = grouped_by_slide[slide_index]
+        slide_blocks = sorted(
+            grouped_by_slide[slide_index],
+            key=lambda block: (
+                round(block["y"] / max(y_threshold * 2, 0.01)),
+                block["x"],
+                block["y"],
+            ),
+        )
         image_blocks = [
             {
                 **block,

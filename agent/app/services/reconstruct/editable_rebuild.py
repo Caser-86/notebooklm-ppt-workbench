@@ -50,6 +50,7 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                         run = paragraph.add_run()
                         run.text = cell_data["text"]
                         run.font.size = Pt(cell_data.get("font_size", 18))
+                        run.font.bold = row_index == 0
                 continue
 
             if block.get("content_type") == "image":

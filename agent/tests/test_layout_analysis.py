@@ -104,3 +104,20 @@ def test_analyze_rebuild_layout_detects_simple_text_tables():
     assert table_block["cells"][0][1]["text"] == "Revenue"
     assert table_block["cells"][1][0]["text"] == "APAC"
     assert table_block["cells"][1][1]["text"] == "$2.4M"
+
+
+def test_analyze_rebuild_layout_detects_tables_with_small_ocr_jitter():
+    blocks = [
+        {"text": "Quarterly metrics", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.4, "height": 0.7, "font_size": 28},
+        {"text": "Region", "slide_index": 0, "x": 1.02, "y": 2.01, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 4.08, "y": 2.03, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 0.98, "y": 2.73, "width": 2.05, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 4.05, "y": 2.68, "width": 2.1, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    table_block = slides[0][1]
+
+    assert table_block["text_role"] == "table"
+    assert table_block["rows"] == 2
+    assert table_block["cols"] == 2
