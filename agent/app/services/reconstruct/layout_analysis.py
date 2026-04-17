@@ -22,33 +22,58 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
     if len(row_positions) < 2 or len(column_positions) < 2:
         return slide_blocks
 
-    if len(body_blocks) != len(row_positions) * len(column_positions):
-        return slide_blocks
+    base_column_widths = [
+        max(
+            (
+                block["width"]
+                for block in body_blocks
+                if min(range(len(column_positions)), key=lambda index: abs(block["x"] - column_positions[index])) == column_index
+            ),
+            default=1.0,
+        )
+        for column_index in range(len(column_positions))
+    ]
 
     grid: dict[tuple[int, int], dict] = {}
     for block in body_blocks:
         row_index = min(range(len(row_positions)), key=lambda index: abs(block["y"] - row_positions[index]))
         column_index = min(range(len(column_positions)), key=lambda index: abs(block["x"] - column_positions[index]))
+        block_right = block["x"] + block["width"]
+        colspan = 1
+        for next_column in range(column_index + 1, len(column_positions)):
+            if block_right >= column_positions[next_column] + 0.25:
+                colspan += 1
+            else:
+                break
+
         grid_key = (row_index, column_index)
         if grid_key in grid:
             return slide_blocks
-        grid[grid_key] = block
 
-    if len(grid) != len(body_blocks):
+        grid[grid_key] = {
+            "text": block["text"],
+            "font_size": block["font_size"],
+            "colspan": colspan,
+        }
+        for merged_column in range(column_index + 1, column_index + colspan):
+            merged_key = (row_index, merged_column)
+            if merged_key in grid:
+                return slide_blocks
+            grid[merged_key] = {"merged": True}
+
+    expected_slots = len(row_positions) * len(column_positions)
+    if len(grid) != expected_slots:
         return slide_blocks
 
     table_cells = [
         [
-            {
-                "text": grid[(row_index, column_index)]["text"],
-                "font_size": grid[(row_index, column_index)]["font_size"],
-            }
+            grid[(row_index, column_index)]
             for column_index in range(len(column_positions))
         ]
         for row_index in range(len(row_positions))
     ]
     column_widths = [
-        max(grid[(row_index, column_index)]["width"] for row_index in range(len(row_positions)))
+        base_column_widths[column_index]
         for column_index in range(len(column_positions))
     ]
 

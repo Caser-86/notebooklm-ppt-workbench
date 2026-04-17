@@ -371,3 +371,29 @@ def test_build_editable_rebuild_sets_table_column_widths_from_detected_grid(tmp_
     table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
 
     assert table.columns[0].width > table.columns[1].width
+
+
+def test_build_editable_rebuild_merges_header_cells_across_columns(tmp_path):
+    blocks = [
+        {"text": "Regional performance", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Q1 2026", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.9, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 4.7, "y": 2.0, "width": 1.2, "height": 0.45, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 4.7, "y": 2.7, "width": 1.2, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-table-colspan.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert len(table.rows) == 3
+    assert len(table.columns) == 2
+    assert table.cell(0, 0).text == "Q1 2026"
+    assert table.cell(1, 0).text == "Region"
+    assert table.cell(1, 1).text == "Revenue"
+    assert table.cell(2, 0).text == "APAC"
+    assert table.cell(2, 1).text == "$2.4M"
+    assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml

@@ -87,7 +87,12 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                     table.columns[column_index].width = Inches(column_width)
                 for row_index, row_cells in enumerate(block["cells"]):
                     for column_index, cell_data in enumerate(row_cells):
+                        if cell_data.get("merged"):
+                            continue
                         cell = table.cell(row_index, column_index)
+                        colspan = int(cell_data.get("colspan", 1))
+                        if colspan > 1:
+                            cell.merge(table.cell(row_index, column_index + colspan - 1))
                         style_table_cell(cell, is_header=row_index == 0)
                         text_frame = cell.text_frame
                         text_frame.clear()

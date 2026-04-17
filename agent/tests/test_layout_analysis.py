@@ -136,3 +136,27 @@ def test_analyze_rebuild_layout_preserves_relative_table_column_widths():
     table_block = slides[0][1]
 
     assert table_block["column_widths"][0] > table_block["column_widths"][1]
+
+
+def test_analyze_rebuild_layout_detects_header_cells_that_span_multiple_columns():
+    blocks = [
+        {"text": "Regional performance", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Q1 2026", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.9, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 4.7, "y": 2.0, "width": 1.2, "height": 0.45, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 4.7, "y": 2.7, "width": 1.2, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    first_slide = slides[0]
+
+    assert [block["text_role"] for block in first_slide] == ["title", "table"]
+    table_block = first_slide[1]
+    assert table_block["rows"] == 3
+    assert table_block["cols"] == 2
+    assert table_block["cells"][0][0]["text"] == "Q1 2026"
+    assert table_block["cells"][0][0]["colspan"] == 2
+    assert table_block["cells"][0][1]["merged"] is True
+    assert table_block["cells"][1][0]["text"] == "Region"
+    assert table_block["cells"][1][1]["text"] == "Revenue"
