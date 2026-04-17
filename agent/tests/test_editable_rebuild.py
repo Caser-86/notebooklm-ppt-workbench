@@ -649,3 +649,40 @@ def test_build_editable_rebuild_handles_freer_cross_merge_combinations_without_c
     assert 'rowSpan="2"' in table.cell(4, 1)._tc.xml
     assert 'rowSpan="2"' in table.cell(4, 3)._tc.xml
     assert table.cell(5, 2).text == "71%"
+
+
+def test_build_editable_rebuild_handles_four_column_complex_tables_from_raw_ocr_boxes(tmp_path):
+    blocks = [
+        {"text": "Strategy matrix", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 7.8, "height": 0.6, "font_size": 26},
+        {"text": "Commercial", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.2, "height": 0.45, "font_size": 18},
+        {"text": "Operations", "slide_index": 0, "x": 5.5, "y": 1.5, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Customer", "slide_index": 0, "x": 7.2, "y": 1.5, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.2, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Utilization", "slide_index": 0, "x": 5.5, "y": 2.0, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "NPS", "slide_index": 0, "x": 7.2, "y": 2.0, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 3.2, "y": 2.7, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.5, "y": 2.7, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "57", "slide_index": 0, "x": 7.2, "y": 2.7, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "EMEA", "slide_index": 0, "x": 3.2, "y": 3.3, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "79%", "slide_index": 0, "x": 5.5, "y": 3.3, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "55", "slide_index": 0, "x": 7.2, "y": 3.3, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "Consumer", "slide_index": 0, "x": 1.0, "y": 4.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "LATAM", "slide_index": 0, "x": 3.2, "y": 4.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "74%", "slide_index": 0, "x": 5.5, "y": 4.0, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "49", "slide_index": 0, "x": 7.2, "y": 4.0, "width": 1.5, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-four-column-complex-table.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert len(table.rows) == 5
+    assert len(table.columns) == 4
+    assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(2, 0)._tc.xml
+    assert table.cell(3, 1).text == "EMEA"
+    assert table.cell(4, 3).text == "49"

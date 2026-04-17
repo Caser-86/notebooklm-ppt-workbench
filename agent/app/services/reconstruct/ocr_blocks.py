@@ -9,6 +9,14 @@ def _is_list_item_text(text: str) -> bool:
     return _strip_list_marker(text) != text
 
 
+def _cluster_positions(values: list[float], threshold: float) -> list[float]:
+    clusters: list[float] = []
+    for value in sorted(values):
+        if not clusters or abs(value - clusters[-1]) > threshold:
+            clusters.append(value)
+    return clusters
+
+
 def normalize_ocr_blocks(raw_blocks: list[dict]) -> list[dict]:
     normalized = []
     for block in raw_blocks:
@@ -47,6 +55,17 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
                 block["y"],
             ),
         )
+        text_blocks = [block for block in slide_blocks if block.get("content_type") != "image"]
+        row_starts = _cluster_positions([block["y"] for block in text_blocks], y_threshold)
+        row_block_counts = {row_index: 0 for row_index in range(len(row_starts))}
+        for block in text_blocks:
+            row_index = min(range(len(row_starts)), key=lambda index: abs(block["y"] - row_starts[index]))
+            row_block_counts[row_index] += 1
+        table_like_rows = {
+            row_index
+            for row_index, count in row_block_counts.items()
+            if count >= 3 and sum(1 for other_count in row_block_counts.values() if other_count >= 3) >= 2
+        }
         image_blocks = [
             {
                 **block,
@@ -62,6 +81,7 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
         for block in slide_blocks:
             if block.get("content_type") == "image":
                 continue
+            row_index = min(range(len(row_starts)), key=lambda index: abs(block["y"] - row_starts[index])) if row_starts else 0
             horizontal_gap = (
                 None
                 if current_line is None
@@ -69,6 +89,7 @@ def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float =
             )
             same_line_and_close = (
                 current_line is not None
+                and row_index not in table_like_rows
                 and abs(block["y"] - current_line["y"]) <= y_threshold
                 and horizontal_gap is not None
                 and horizontal_gap <= 0.25
