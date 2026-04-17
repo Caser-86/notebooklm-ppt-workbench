@@ -712,3 +712,28 @@ def test_build_editable_rebuild_skips_table_creation_when_cells_conflict(tmp_pat
 
     assert table_shapes == []
     assert any(shape.text == "Ops Health" for shape in text_shapes)
+
+
+def test_build_editable_rebuild_handles_dense_three_column_tables_from_raw_ocr_boxes(tmp_path):
+    blocks = [
+        {"text": "Dense matrix", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Markets", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.0, "height": 0.45, "font_size": 18},
+        {"text": "Health", "slide_index": 0, "x": 5.2, "y": 1.5, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.3, "width": 1.9, "height": 1.0, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 3.1, "y": 2.3, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.1, "y": 2.3, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "EMEA", "slide_index": 0, "x": 3.1, "y": 2.9, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "79%", "slide_index": 0, "x": 5.1, "y": 2.9, "width": 1.8, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-dense-three-column-table.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert len(table.rows) == 3
+    assert len(table.columns) == 3
+    assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(1, 0)._tc.xml
+    assert table.cell(2, 1).text == "EMEA"

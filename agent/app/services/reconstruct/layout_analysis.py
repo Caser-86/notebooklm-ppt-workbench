@@ -1,4 +1,4 @@
-from app.services.reconstruct.ocr_blocks import group_ocr_blocks_by_slide_lines
+from app.services.reconstruct.ocr_blocks import group_ocr_blocks_by_slide_lines, group_raw_ocr_blocks_by_slide
 
 
 def _cluster_positions(values: list[float], threshold: float) -> list[float]:
@@ -236,14 +236,34 @@ def merge_consecutive_text_blocks(slide_blocks: list[dict]) -> list[dict]:
 def analyze_rebuild_layout(raw_blocks: list[dict]) -> list[list[dict]]:
     analyzed_slides: list[list[dict]] = []
 
-    for slide_blocks in group_ocr_blocks_by_slide_lines(raw_blocks):
+    raw_slide_groups = group_raw_ocr_blocks_by_slide(raw_blocks)
+    line_slide_groups = group_ocr_blocks_by_slide_lines(raw_blocks)
+
+    for raw_slide_blocks, line_slide_blocks in zip(raw_slide_groups, line_slide_groups):
+        raw_table_candidate = detect_table_blocks(classify_captions(raw_slide_blocks))
+        raw_table_block = next((block for block in raw_table_candidate if block.get("text_role") == "table"), None)
+
+        if raw_table_block is not None:
+            slide_blocks = [
+                block
+                for block in line_slide_blocks
+                if not (
+                    block.get("text_role") == "body"
+                    and block["x"] >= raw_table_block["x"] - 0.1
+                    and block["x"] + block["width"] <= raw_table_block["x"] + raw_table_block["width"] + 0.1
+                    and block["y"] >= raw_table_block["y"] - 0.1
+                    and block["y"] + block["height"] <= raw_table_block["y"] + raw_table_block["height"] + 0.1
+                )
+            ]
+            slide_blocks = sorted(slide_blocks + [raw_table_block], key=lambda item: (item["y"], item["x"]))
+        else:
+            slide_blocks = detect_table_blocks(classify_captions(line_slide_blocks))
+
         analyzed_slides.append(
             assign_column_indices(
                 merge_consecutive_text_blocks(
                     apply_vertical_spacing(
-                        detect_table_blocks(
-                            classify_captions(slide_blocks)
-                        )
+                        slide_blocks
                     )
                 )
             )

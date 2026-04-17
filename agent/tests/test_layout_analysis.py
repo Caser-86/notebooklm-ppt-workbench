@@ -455,3 +455,27 @@ def test_analyze_rebuild_layout_falls_back_when_table_cells_overlap_conflict():
 
     assert all(block["text_role"] != "table" for block in first_slide)
     assert any(block["text"] == "Ops Health" for block in first_slide)
+
+
+def test_analyze_rebuild_layout_uses_raw_ocr_boxes_for_dense_three_column_tables():
+    blocks = [
+        {"text": "Dense matrix", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Markets", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.0, "height": 0.45, "font_size": 18},
+        {"text": "Health", "slide_index": 0, "x": 5.2, "y": 1.5, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.3, "width": 1.9, "height": 1.0, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 3.1, "y": 2.3, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.1, "y": 2.3, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "EMEA", "slide_index": 0, "x": 3.1, "y": 2.9, "width": 1.8, "height": 0.45, "font_size": 18},
+        {"text": "79%", "slide_index": 0, "x": 5.1, "y": 2.9, "width": 1.8, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    table_block = slides[0][1]
+
+    assert table_block["rows"] == 3
+    assert table_block["cols"] == 3
+    assert table_block["cells"][0][0]["text"] == "Markets"
+    assert table_block["cells"][0][0]["colspan"] == 2
+    assert table_block["cells"][1][0]["text"] == "Enterprise"
+    assert table_block["cells"][1][0]["rowspan"] == 2
+    assert table_block["cells"][2][1]["text"] == "EMEA"

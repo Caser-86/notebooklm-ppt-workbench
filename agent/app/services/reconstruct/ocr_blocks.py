@@ -36,6 +36,49 @@ def normalize_ocr_blocks(raw_blocks: list[dict]) -> list[dict]:
     return normalized
 
 
+def group_raw_ocr_blocks_by_slide(raw_blocks: list[dict]) -> list[list[dict]]:
+    normalized = normalize_ocr_blocks(raw_blocks)
+    if not normalized:
+        return []
+
+    grouped_by_slide: dict[int, list[dict]] = {}
+    for block in sorted(normalized, key=lambda item: (item["slide_index"], item["y"], item["x"])):
+        grouped_by_slide.setdefault(block["slide_index"], []).append(block)
+
+    grouped_slides: list[list[dict]] = []
+    for slide_index in sorted(grouped_by_slide):
+        slide_blocks = grouped_by_slide[slide_index]
+        text_blocks = [block for block in slide_blocks if block.get("content_type") != "image"]
+        image_blocks = [
+            {
+                **block,
+                "text_role": "image",
+            }
+            for block in slide_blocks
+            if block.get("content_type") == "image"
+        ]
+
+        if text_blocks:
+            slide_max_font = max(block["font_size"] for block in text_blocks)
+            classified_text_blocks = []
+            for block in text_blocks:
+                adjusted = dict(block)
+                if slide_max_font >= 24 and adjusted["font_size"] == slide_max_font and not _is_list_item_text(adjusted["text"]):
+                    adjusted["text_role"] = "title"
+                elif _is_list_item_text(adjusted["text"]):
+                    adjusted["text_role"] = "list_item"
+                    adjusted["text"] = _strip_list_marker(adjusted["text"])
+                else:
+                    adjusted["text_role"] = "body"
+                classified_text_blocks.append(adjusted)
+        else:
+            classified_text_blocks = []
+
+        grouped_slides.append(sorted(classified_text_blocks + image_blocks, key=lambda item: (item["y"], item["x"])))
+
+    return grouped_slides
+
+
 def group_ocr_blocks_by_slide_lines(raw_blocks: list[dict], y_threshold: float = 0.12) -> list[list[dict]]:
     normalized = normalize_ocr_blocks(raw_blocks)
     if not normalized:
