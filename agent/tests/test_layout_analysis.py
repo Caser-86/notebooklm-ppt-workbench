@@ -434,3 +434,24 @@ def test_analyze_rebuild_layout_detects_four_column_complex_tables_from_raw_ocr_
     assert table_block["cells"][3][0]["merged"] is True
     assert table_block["cells"][3][1]["text"] == "EMEA"
     assert table_block["cells"][4][3]["text"] == "49"
+
+
+def test_analyze_rebuild_layout_falls_back_when_table_cells_overlap_conflict():
+    blocks = [
+        {"text": "Conflict matrix", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 7.6, "height": 0.6, "font_size": 26},
+        {"text": "Commercial", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.2, "height": 0.45, "font_size": 18},
+        {"text": "Operations", "slide_index": 0, "x": 5.5, "y": 1.5, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.2, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Ops Health", "slide_index": 0, "x": 5.5, "y": 2.0, "width": 3.1, "height": 1.0, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "APAC + EMEA", "slide_index": 0, "x": 3.2, "y": 2.7, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.5, "y": 2.7, "width": 1.5, "height": 0.45, "font_size": 18},
+        {"text": "57", "slide_index": 0, "x": 7.2, "y": 2.7, "width": 1.4, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    first_slide = slides[0]
+
+    assert all(block["text_role"] != "table" for block in first_slide)
+    assert any(block["text"] == "Ops Health" for block in first_slide)
