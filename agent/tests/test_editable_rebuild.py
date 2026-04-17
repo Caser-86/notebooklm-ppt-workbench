@@ -3,6 +3,7 @@ from pathlib import Path
 
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 from pptx import Presentation
+from pptx.dml.color import RGBColor
 from pptx.util import Inches
 
 from app.services.reconstruct.editable_rebuild import build_editable_rebuild
@@ -325,3 +326,48 @@ def test_build_editable_rebuild_styles_table_header_row(tmp_path):
 
     assert header_run.font.bold is True
     assert body_run.font.bold in (None, False)
+
+
+def test_build_editable_rebuild_applies_table_header_fill_and_grid_borders(tmp_path):
+    blocks = [
+        {"text": "Quarterly metrics", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.4, "height": 0.7, "font_size": 28},
+        {"text": "Region", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.1, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 4.0, "y": 2.0, "width": 2.1, "height": 0.45, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.1, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 4.0, "y": 2.7, "width": 2.1, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-table-style.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    header_fill = table.cell(0, 0).fill.fore_color.rgb
+    body_fill = table.cell(1, 0).fill.fore_color.rgb
+    cell_xml = table.cell(0, 0)._tc.xml
+
+    assert header_fill == RGBColor(0xE9, 0xEE, 0xF7)
+    assert body_fill != header_fill
+    assert "a:lnL" in cell_xml
+    assert "a:lnR" in cell_xml
+    assert "a:lnT" in cell_xml
+    assert "a:lnB" in cell_xml
+
+
+def test_build_editable_rebuild_sets_table_column_widths_from_detected_grid(tmp_path):
+    blocks = [
+        {"text": "Pipeline status", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 28},
+        {"text": "Stage", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "Count", "slide_index": 0, "x": 4.7, "y": 2.0, "width": 1.2, "height": 0.45, "font_size": 18},
+        {"text": "Qualified", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "18", "slide_index": 0, "x": 4.7, "y": 2.7, "width": 1.2, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-table-widths.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert table.columns[0].width > table.columns[1].width

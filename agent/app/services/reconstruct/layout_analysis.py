@@ -47,6 +47,10 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
         ]
         for row_index in range(len(row_positions))
     ]
+    column_widths = [
+        max(grid[(row_index, column_index)]["width"] for row_index in range(len(row_positions)))
+        for column_index in range(len(column_positions))
+    ]
 
     table_block = {
         "slide_index": body_blocks[0]["slide_index"],
@@ -60,6 +64,7 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
         "rows": len(row_positions),
         "cols": len(column_positions),
         "cells": table_cells,
+        "column_widths": column_widths,
     }
 
     remaining_blocks = [block for block in slide_blocks if block not in body_blocks]

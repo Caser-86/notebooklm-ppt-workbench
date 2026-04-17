@@ -121,3 +121,18 @@ def test_analyze_rebuild_layout_detects_tables_with_small_ocr_jitter():
     assert table_block["text_role"] == "table"
     assert table_block["rows"] == 2
     assert table_block["cols"] == 2
+
+
+def test_analyze_rebuild_layout_preserves_relative_table_column_widths():
+    blocks = [
+        {"text": "Pipeline status", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.2, "height": 0.7, "font_size": 28},
+        {"text": "Stage", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "Count", "slide_index": 0, "x": 4.7, "y": 2.0, "width": 1.2, "height": 0.45, "font_size": 18},
+        {"text": "Qualified", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 3.1, "height": 0.45, "font_size": 18},
+        {"text": "18", "slide_index": 0, "x": 4.7, "y": 2.7, "width": 1.2, "height": 0.45, "font_size": 18},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    table_block = slides[0][1]
+
+    assert table_block["column_widths"][0] > table_block["column_widths"][1]

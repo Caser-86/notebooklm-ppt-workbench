@@ -1,6 +1,9 @@
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.dml.color import RGBColor
+from pptx.oxml.ns import qn
+from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches, Pt
 
 from app.services.reconstruct.layout_analysis import analyze_rebuild_layout
@@ -23,6 +26,44 @@ def resolve_render_geometry(block: dict) -> tuple[float, float, float, float]:
     return left, top, width, height
 
 
+def set_table_cell_borders(cell, color: str = "A8B3C7", width: str = "12700") -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
+    for border_name in ("a:lnL", "a:lnR", "a:lnT", "a:lnB"):
+        existing = tc_pr.find(qn(border_name))
+        if existing is not None:
+            tc_pr.remove(existing)
+
+        border = OxmlElement(border_name)
+        border.set("w", width)
+        solid_fill = OxmlElement("a:solidFill")
+        srgb = OxmlElement("a:srgbClr")
+        srgb.set("val", color)
+        solid_fill.append(srgb)
+        border.append(solid_fill)
+        preset_dash = OxmlElement("a:prstDash")
+        preset_dash.set("val", "solid")
+        border.append(preset_dash)
+        round_join = OxmlElement("a:round")
+        border.append(round_join)
+        head_end = OxmlElement("a:headEnd")
+        head_end.set("type", "none")
+        head_end.set("w", "med")
+        head_end.set("len", "med")
+        border.append(head_end)
+        tail_end = OxmlElement("a:tailEnd")
+        tail_end.set("type", "none")
+        tail_end.set("w", "med")
+        tail_end.set("len", "med")
+        border.append(tail_end)
+        tc_pr.append(border)
+
+
+def style_table_cell(cell, is_header: bool) -> None:
+    cell.fill.solid()
+    cell.fill.fore_color.rgb = RGBColor(0xE9, 0xEE, 0xF7) if is_header else RGBColor(0xFF, 0xFF, 0xFF)
+    set_table_cell_borders(cell)
+
+
 def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
     presentation = Presentation()
     presentation.slide_width = Inches(13.333)
@@ -42,9 +83,13 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                     Inches(height),
                 )
                 table = table_shape.table
+                for column_index, column_width in enumerate(block.get("column_widths", [])):
+                    table.columns[column_index].width = Inches(column_width)
                 for row_index, row_cells in enumerate(block["cells"]):
                     for column_index, cell_data in enumerate(row_cells):
-                        text_frame = table.cell(row_index, column_index).text_frame
+                        cell = table.cell(row_index, column_index)
+                        style_table_cell(cell, is_header=row_index == 0)
+                        text_frame = cell.text_frame
                         text_frame.clear()
                         paragraph = text_frame.paragraphs[0]
                         run = paragraph.add_run()
