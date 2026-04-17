@@ -1,19 +1,105 @@
 # NotebookLM PPT Workbench
 
-Personal workspace for generating NotebookLM slide decks and rebuilding them into editable PowerPoint outputs.
+Personal workbench for preparing NotebookLM slide decks and rebuilding exported results into editable PowerPoint outputs.
 
-See `docs/DELIVERY.md` for the current project handoff, usage flow, and next-step recommendations.
+The product is intentionally split into two parts:
+
+1. `Workbench`
+Prepare sources, prompts, project history, and NotebookLM handoff.
+2. `Reconstruction engine`
+Take exported slide assets and rebuild:
+   - a display-faithful clone
+   - a more editable `.pptx`
+
+This repository is currently a `semi-automatic` system:
+
+- the app prepares sources and prompts
+- the user generates and exports inside NotebookLM
+- the local agent rebuilds the export into editable outputs
+
+## Current V1 Scope
+
+### Part 1: Semi-automatic NotebookLM workbench
+
+- project list and project switching
+- project detail persistence
+- source intake for:
+  - links
+  - file paths
+  - image paths
+  - audio paths
+  - video paths
+- source insight summaries
+- source revision history
+- source revision diff view
+- source revision full manifest view
+- source revision compare view
+- compare filters and compare-to-prompt export
+
+### Part 2: Editable PPT reconstruction
+
+- display clone output
+- editable rebuild output
+- multi-slide rebuild
+- OCR same-line merge
+- title/body hierarchy
+- list grouping and indentation
+- image preservation and caption rendering
+- two-column handling
+- table reconstruction with:
+  - `colspan`
+  - first-column `rowspan`
+  - non-first-column `rowspan`
+  - multi-level headers
+  - width-aware columns
+  - header styling and borders
+  - raw OCR box table detection
+- icon card reconstruction for:
+  - small icon or image
+  - title
+  - description
+
+## Read First
+
+- Delivery notes: `docs/DELIVERY.md`
+- Acceptance checklist: `docs/ACCEPTANCE.md`
 
 ## Run locally
 
 ### Agent
-`cd agent && python -m uvicorn app.main:app --reload`
+
+```powershell
+cd agent
+python -m uvicorn app.main:app --reload
+```
 
 ### Web
-`cd web && npm install && npm run dev`
 
-## Run tests
+```powershell
+cd web
+npm install
+npm run dev
+```
 
-- Agent: `cd agent && python -m pytest`
-- Web: `cd web && npm test -- --run`
-- Manual acceptance: `powershell -ExecutionPolicy Bypass -File scripts/run_manual_acceptance.ps1`
+## Verification
+
+### Agent
+
+```powershell
+cd agent
+python -m pytest -q
+```
+
+### Web
+
+```powershell
+cd web
+npm test -- --run
+npm run build
+```
+
+### Manual acceptance
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_manual_acceptance.ps1
+```

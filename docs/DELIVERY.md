@@ -24,6 +24,9 @@ Implemented now:
   - NotebookLM runner state machine scaffold
   - display-clone PPT reconstruction
   - editable PPT reconstruction from OCR-like blocks
+  - raw OCR box table detection
+  - table reconstruction with merged-cell support
+  - icon card reconstruction
 - React workbench with:
   - project rail
   - source intake area
@@ -31,6 +34,8 @@ Implemented now:
   - NotebookLM handoff section
   - status section
   - rebuilt download section
+  - source revision compare and filtering
+  - compare summary export into Prompt Studio
 - acceptance and regression scaffolding
 
 ## Verified Locally
@@ -52,6 +57,12 @@ The following checks were run successfully in the current environment:
   - `playwright`
   - `rapidocr_onnxruntime`
 - Playwright Chromium install
+
+Most recent verified counts on this branch:
+
+- Agent: `61 passed`
+- Web: `10 passed`
+- Web build: success
 
 ## How To Run
 
@@ -106,6 +117,34 @@ After export, come back to the workbench flow and use the local reconstruction p
 
 The current UI is already framed around this manual handoff model.
 
+## Reconstruction Strengths
+
+The current editable reconstruction is strongest on:
+
+- titles and paragraphs
+- bullet and list blocks
+- two-column text layouts
+- image plus caption layouts
+- structured tables, including:
+  - grouped headers
+  - `colspan`
+  - first-column `rowspan`
+  - non-first-column `rowspan`
+  - multi-level headers
+- repeated icon cards with:
+  - small icon
+  - short title
+  - short description
+
+## Reconstruction Limits
+
+The current editable reconstruction is weaker on:
+
+- arbitrary decorative backgrounds
+- highly irregular freeform compositions
+- advanced shape semantics beyond current text/image/table/icon-card recovery
+- general-purpose automation of every possible NotebookLM slide style
+
 ## Important Limitation
 
 Google sign-in and NotebookLM generation are not currently automated end-to-end.
@@ -153,28 +192,19 @@ Checklist-style script for the three planned manual acceptance scenarios.
 
 ## Recommended Next Steps
 
-### Highest-value next step
+If the goal is to close the loop quickly, the highest-value next step is not more feature work.
 
-Connect the current UI to a real local export intake flow so the user can:
+It is:
 
-1. select exported NotebookLM files
-2. trigger rebuild from the UI
-3. see rebuilt download links update from actual generated artifacts
+1. freeze the current `V1` scope
+2. run real sample acceptance with three representative exports
+3. record known-good and known-bad slide patterns
+4. demo the semi-automatic flow end to end
 
-### After that
+If feature work continues after that, the best next feature direction is:
 
-- improve editable reconstruction quality:
-  - multi-slide rebuild
-  - text grouping
-  - font/style approximation
-  - shape and layout recovery
-- connect prompt studio to real backend endpoints instead of static local values
-- add true artifact indexing and history per project
-- add export intake UX for PDF and PPTX separately
-
-### Only after those
-
-Revisit deeper NotebookLM automation. Treat it as an enhancement, not a dependency for the current product path.
+1. richer icon-card and grouped visual block recovery
+2. only then broader freeform layout recovery
 
 ## Suggested Demo Narrative
 
@@ -185,3 +215,13 @@ If you need to show this project to someone else, present it as:
 3. a post-export editable reconstruction system
 
 That story matches what the repository can honestly support today.
+
+## Suggested Demo Pack
+
+For a short product demo, use:
+
+1. one text-first deck page
+2. one table-heavy page
+3. one repeated icon-card page
+
+That combination shows the strongest current value of the rebuild engine.
