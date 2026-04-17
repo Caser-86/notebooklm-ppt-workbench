@@ -737,3 +737,50 @@ def test_build_editable_rebuild_handles_dense_three_column_tables_from_raw_ocr_b
     assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
     assert 'rowSpan="2"' in table.cell(1, 0)._tc.xml
     assert table.cell(2, 1).text == "EMEA"
+
+
+def test_build_editable_rebuild_renders_icon_cards_as_image_title_and_body(tmp_path):
+    blocks = [
+        {"text": "Platform overview", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 5.2, "height": 0.6, "font_size": 28},
+        {
+            "text": "",
+            "slide_index": 0,
+            "x": 1.0,
+            "y": 2.0,
+            "width": 0.65,
+            "height": 0.65,
+            "content_type": "image",
+            "image_path": "tests/fixtures/slides/slide-1.png",
+        },
+        {"text": "Fast setup", "slide_index": 0, "x": 1.9, "y": 1.95, "width": 2.0, "height": 0.35, "font_size": 20},
+        {"text": "Spin up a deck workspace in minutes.", "slide_index": 0, "x": 1.9, "y": 2.4, "width": 3.3, "height": 0.4, "font_size": 16},
+        {
+            "text": "",
+            "slide_index": 0,
+            "x": 6.0,
+            "y": 2.0,
+            "width": 0.65,
+            "height": 0.65,
+            "content_type": "image",
+            "image_path": "tests/fixtures/slides/slide-1.png",
+        },
+        {"text": "Safer exports", "slide_index": 0, "x": 6.9, "y": 1.95, "width": 2.1, "height": 0.35, "font_size": 20},
+        {"text": "Rebuild editable slides after NotebookLM export.", "slide_index": 0, "x": 6.9, "y": 2.4, "width": 3.5, "height": 0.4, "font_size": 16},
+    ]
+    output_path = tmp_path / "editable-rebuild-icon-cards.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    slide = presentation.slides[0]
+    picture_shapes = [shape for shape in slide.shapes if shape.shape_type == MSO_SHAPE_TYPE.PICTURE]
+    text_shapes = [shape for shape in slide.shapes if hasattr(shape, "text") and shape.text.strip()]
+
+    assert len(picture_shapes) == 2
+    assert [shape.text for shape in text_shapes] == [
+        "Platform overview",
+        "Fast setup",
+        "Spin up a deck workspace in minutes.",
+        "Safer exports",
+        "Rebuild editable slides after NotebookLM export.",
+    ]

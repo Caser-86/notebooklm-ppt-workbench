@@ -115,6 +115,104 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
     return sorted(remaining_blocks + [table_block], key=lambda item: (item["y"], item["x"]))
 
 
+def detect_icon_cards(slide_blocks: list[dict]) -> list[dict]:
+    image_blocks = [
+        block for block in slide_blocks
+        if block.get("text_role") == "image"
+        and block.get("width", 0) <= 1.0
+        and block.get("height", 0) <= 1.0
+    ]
+    text_blocks = [
+        block for block in slide_blocks
+        if block.get("content_type") == "text" and block.get("text_role") in {"title", "body", "caption"}
+    ]
+
+    if len(image_blocks) < 1 or len(text_blocks) < 2:
+        return slide_blocks
+
+    consumed_text_ids: set[int] = set()
+    icon_cards: list[dict] = []
+
+    for image in image_blocks:
+        title_candidate = next(
+            (
+                block for block in text_blocks
+                if id(block) not in consumed_text_ids
+                and block["font_size"] >= 18
+                and image["x"] + image["width"] <= block["x"] <= image["x"] + image["width"] + 1.2
+                and abs(block["y"] - image["y"]) <= 0.2
+            ),
+            None,
+        )
+        if title_candidate is None:
+            continue
+
+        body_candidate = next(
+            (
+                block for block in text_blocks
+                if id(block) not in consumed_text_ids
+                and block["font_size"] <= title_candidate["font_size"]
+                and block["x"] >= title_candidate["x"] - 0.1
+                and block["y"] >= title_candidate["y"] + title_candidate["height"] - 0.05
+                and block["y"] <= title_candidate["y"] + title_candidate["height"] + 0.8
+            ),
+            None,
+        )
+        if body_candidate is None:
+            continue
+
+        consumed_text_ids.add(id(title_candidate))
+        consumed_text_ids.add(id(body_candidate))
+        icon_cards.append(
+            {
+                "slide_index": image["slide_index"],
+                "content_type": "icon_card",
+                "text_role": "icon_card",
+                "text": "",
+                "x": min(image["x"], title_candidate["x"], body_candidate["x"]),
+                "y": min(image["y"], title_candidate["y"], body_candidate["y"]),
+                "width": max(
+                    image["x"] + image["width"],
+                    title_candidate["x"] + title_candidate["width"],
+                    body_candidate["x"] + body_candidate["width"],
+                ) - min(image["x"], title_candidate["x"], body_candidate["x"]),
+                "height": max(
+                    image["y"] + image["height"],
+                    title_candidate["y"] + title_candidate["height"],
+                    body_candidate["y"] + body_candidate["height"],
+                ) - min(image["y"], title_candidate["y"], body_candidate["y"]),
+                "icon_path": image.get("image_path"),
+                "icon_x": image["x"],
+                "icon_y": image["y"],
+                "icon_width": image["width"],
+                "icon_height": image["height"],
+                "title_text": title_candidate["text"],
+                "title_x": title_candidate["x"],
+                "title_y": title_candidate["y"],
+                "title_width": title_candidate["width"],
+                "title_height": title_candidate["height"],
+                "title_font_size": title_candidate["font_size"],
+                "body_text": body_candidate["text"],
+                "body_x": body_candidate["x"],
+                "body_y": body_candidate["y"],
+                "body_width": body_candidate["width"],
+                "body_height": body_candidate["height"],
+                "body_font_size": body_candidate["font_size"],
+            }
+        )
+
+    if not icon_cards:
+        return slide_blocks
+
+    remaining_blocks = [
+        block
+        for block in slide_blocks
+        if block not in image_blocks
+        and id(block) not in consumed_text_ids
+    ]
+    return sorted(remaining_blocks + icon_cards, key=lambda item: (item["y"], item["x"]))
+
+
 def classify_captions(slide_blocks: list[dict]) -> list[dict]:
     classified_blocks: list[dict] = []
     image_blocks = [block for block in slide_blocks if block["text_role"] == "image"]
@@ -240,24 +338,32 @@ def analyze_rebuild_layout(raw_blocks: list[dict]) -> list[list[dict]]:
     line_slide_groups = group_ocr_blocks_by_slide_lines(raw_blocks)
 
     for raw_slide_blocks, line_slide_blocks in zip(raw_slide_groups, line_slide_groups):
-        raw_table_candidate = detect_table_blocks(classify_captions(raw_slide_blocks))
-        raw_table_block = next((block for block in raw_table_candidate if block.get("text_role") == "table"), None)
+        icon_processed_blocks = detect_icon_cards(line_slide_blocks)
+        has_icon_cards = any(block.get("text_role") == "icon_card" for block in icon_processed_blocks)
 
-        if raw_table_block is not None:
-            slide_blocks = [
-                block
-                for block in line_slide_blocks
-                if not (
-                    block.get("text_role") == "body"
-                    and block["x"] >= raw_table_block["x"] - 0.1
-                    and block["x"] + block["width"] <= raw_table_block["x"] + raw_table_block["width"] + 0.1
-                    and block["y"] >= raw_table_block["y"] - 0.1
-                    and block["y"] + block["height"] <= raw_table_block["y"] + raw_table_block["height"] + 0.1
-                )
-            ]
-            slide_blocks = sorted(slide_blocks + [raw_table_block], key=lambda item: (item["y"], item["x"]))
+        if has_icon_cards:
+            slide_blocks = detect_table_blocks(classify_captions(icon_processed_blocks))
         else:
-            slide_blocks = detect_table_blocks(classify_captions(line_slide_blocks))
+            raw_table_candidate = detect_table_blocks(classify_captions(raw_slide_blocks))
+            raw_table_block = next((block for block in raw_table_candidate if block.get("text_role") == "table"), None)
+
+            if raw_table_block is not None:
+                slide_blocks = [
+                    block
+                    for block in line_slide_blocks
+                    if not (
+                        block.get("text_role") == "body"
+                        and block["x"] >= raw_table_block["x"] - 0.1
+                        and block["x"] + block["width"] <= raw_table_block["x"] + raw_table_block["width"] + 0.1
+                        and block["y"] >= raw_table_block["y"] - 0.1
+                        and block["y"] + block["height"] <= raw_table_block["y"] + raw_table_block["height"] + 0.1
+                    )
+                ]
+                slide_blocks = sorted(slide_blocks + [raw_table_block], key=lambda item: (item["y"], item["x"]))
+            else:
+                slide_blocks = detect_table_blocks(classify_captions(line_slide_blocks))
+
+            slide_blocks = detect_icon_cards(slide_blocks)
 
         analyzed_slides.append(
             assign_column_indices(

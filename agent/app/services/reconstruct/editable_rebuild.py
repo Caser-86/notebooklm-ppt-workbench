@@ -105,6 +105,41 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                         run.font.bold = row_index < header_rows
                 continue
 
+            if block.get("content_type") == "icon_card":
+                slide.shapes.add_picture(
+                    str(Path(block["icon_path"])),
+                    left=Inches(block["icon_x"]),
+                    top=Inches(block["icon_y"]),
+                    width=Inches(block["icon_width"]),
+                    height=Inches(block["icon_height"]),
+                )
+
+                title_box = slide.shapes.add_textbox(
+                    left=Inches(block["title_x"]),
+                    top=Inches(block["title_y"]),
+                    width=Inches(block["title_width"]),
+                    height=Inches(block["title_height"]),
+                )
+                title_frame = title_box.text_frame
+                title_frame.clear()
+                title_run = title_frame.paragraphs[0].add_run()
+                title_run.text = block["title_text"]
+                title_run.font.size = Pt(block["title_font_size"])
+                title_run.font.bold = True
+
+                body_box = slide.shapes.add_textbox(
+                    left=Inches(block["body_x"]),
+                    top=Inches(block["body_y"]),
+                    width=Inches(block["body_width"]),
+                    height=Inches(block["body_height"]),
+                )
+                body_frame = body_box.text_frame
+                body_frame.clear()
+                body_run = body_frame.paragraphs[0].add_run()
+                body_run.text = block["body_text"]
+                body_run.font.size = Pt(block["body_font_size"])
+                continue
+
             if block.get("content_type") == "image":
                 image_path = Path(block["image_path"])
                 slide.shapes.add_picture(

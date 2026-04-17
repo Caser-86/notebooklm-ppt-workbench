@@ -479,3 +479,46 @@ def test_analyze_rebuild_layout_uses_raw_ocr_boxes_for_dense_three_column_tables
     assert table_block["cells"][1][0]["text"] == "Enterprise"
     assert table_block["cells"][1][0]["rowspan"] == 2
     assert table_block["cells"][2][1]["text"] == "EMEA"
+
+
+def test_analyze_rebuild_layout_groups_repeated_icon_title_description_cards():
+    blocks = [
+        {"text": "Platform overview", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 5.2, "height": 0.6, "font_size": 28},
+        {
+            "text": "",
+            "slide_index": 0,
+            "x": 1.0,
+            "y": 2.0,
+            "width": 0.65,
+            "height": 0.65,
+            "content_type": "image",
+            "image_path": "tests/fixtures/slides/slide-1.png",
+        },
+        {"text": "Fast setup", "slide_index": 0, "x": 1.9, "y": 1.95, "width": 2.0, "height": 0.35, "font_size": 20},
+        {"text": "Spin up a deck workspace in minutes.", "slide_index": 0, "x": 1.9, "y": 2.4, "width": 3.3, "height": 0.4, "font_size": 16},
+        {
+            "text": "",
+            "slide_index": 0,
+            "x": 6.0,
+            "y": 2.0,
+            "width": 0.65,
+            "height": 0.65,
+            "content_type": "image",
+            "image_path": "tests/fixtures/slides/slide-1.png",
+        },
+        {"text": "Safer exports", "slide_index": 0, "x": 6.9, "y": 1.95, "width": 2.1, "height": 0.35, "font_size": 20},
+        {"text": "Rebuild editable slides after NotebookLM export.", "slide_index": 0, "x": 6.9, "y": 2.4, "width": 3.5, "height": 0.4, "font_size": 16},
+    ]
+
+    slides = analyze_rebuild_layout(blocks)
+    first_slide = slides[0]
+
+    assert [block["text_role"] for block in first_slide] == ["title", "icon_card", "icon_card"]
+    first_card = first_slide[1]
+    second_card = first_slide[2]
+
+    assert first_card["title_text"] == "Fast setup"
+    assert first_card["body_text"] == "Spin up a deck workspace in minutes."
+    assert first_card["icon_path"] == "tests/fixtures/slides/slide-1.png"
+    assert second_card["title_text"] == "Safer exports"
+    assert second_card["body_text"] == "Rebuild editable slides after NotebookLM export."
