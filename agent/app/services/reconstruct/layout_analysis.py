@@ -1,6 +1,71 @@
 from app.services.reconstruct.ocr_blocks import group_ocr_blocks_by_slide_lines
 
 
+def _cluster_positions(values: list[float], threshold: float) -> list[float]:
+    clusters: list[float] = []
+    for value in sorted(values):
+        if not clusters or abs(value - clusters[-1]) > threshold:
+            clusters.append(value)
+    return clusters
+
+
+def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
+    body_blocks = [
+        block for block in slide_blocks
+        if block.get("text_role") == "body" and block.get("content_type") == "text"
+    ]
+    if len(body_blocks) < 4:
+        return slide_blocks
+
+    row_positions = _cluster_positions([block["y"] for block in body_blocks], 0.25)
+    column_positions = _cluster_positions([block["x"] for block in body_blocks], 0.5)
+    if len(row_positions) < 2 or len(column_positions) < 2:
+        return slide_blocks
+
+    if len(body_blocks) != len(row_positions) * len(column_positions):
+        return slide_blocks
+
+    grid: dict[tuple[int, int], dict] = {}
+    for block in body_blocks:
+        row_index = min(range(len(row_positions)), key=lambda index: abs(block["y"] - row_positions[index]))
+        column_index = min(range(len(column_positions)), key=lambda index: abs(block["x"] - column_positions[index]))
+        grid_key = (row_index, column_index)
+        if grid_key in grid:
+            return slide_blocks
+        grid[grid_key] = block
+
+    if len(grid) != len(body_blocks):
+        return slide_blocks
+
+    table_cells = [
+        [
+            {
+                "text": grid[(row_index, column_index)]["text"],
+                "font_size": grid[(row_index, column_index)]["font_size"],
+            }
+            for column_index in range(len(column_positions))
+        ]
+        for row_index in range(len(row_positions))
+    ]
+
+    table_block = {
+        "slide_index": body_blocks[0]["slide_index"],
+        "content_type": "table",
+        "text_role": "table",
+        "text": "",
+        "x": min(block["x"] for block in body_blocks),
+        "y": min(block["y"] for block in body_blocks),
+        "width": max(block["x"] + block["width"] for block in body_blocks) - min(block["x"] for block in body_blocks),
+        "height": max(block["y"] + block["height"] for block in body_blocks) - min(block["y"] for block in body_blocks),
+        "rows": len(row_positions),
+        "cols": len(column_positions),
+        "cells": table_cells,
+    }
+
+    remaining_blocks = [block for block in slide_blocks if block not in body_blocks]
+    return sorted(remaining_blocks + [table_block], key=lambda item: (item["y"], item["x"]))
+
+
 def classify_captions(slide_blocks: list[dict]) -> list[dict]:
     classified_blocks: list[dict] = []
     image_blocks = [block for block in slide_blocks if block["text_role"] == "image"]
@@ -123,6 +188,16 @@ def analyze_rebuild_layout(raw_blocks: list[dict]) -> list[list[dict]]:
     analyzed_slides: list[list[dict]] = []
 
     for slide_blocks in group_ocr_blocks_by_slide_lines(raw_blocks):
-        analyzed_slides.append(assign_column_indices(merge_consecutive_text_blocks(classify_captions(apply_vertical_spacing(slide_blocks)))))
+        analyzed_slides.append(
+            assign_column_indices(
+                merge_consecutive_text_blocks(
+                    apply_vertical_spacing(
+                        detect_table_blocks(
+                            classify_captions(slide_blocks)
+                        )
+                    )
+                )
+            )
+        )
 
     return analyzed_slides

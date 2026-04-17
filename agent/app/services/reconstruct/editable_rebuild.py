@@ -32,6 +32,26 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
         slide = presentation.slides.add_slide(presentation.slide_layouts[6])
         for block in slide_blocks:
             left, top, width, height = resolve_render_geometry(block)
+            if block.get("content_type") == "table":
+                table_shape = slide.shapes.add_table(
+                    block["rows"],
+                    block["cols"],
+                    Inches(left),
+                    Inches(top),
+                    Inches(width),
+                    Inches(height),
+                )
+                table = table_shape.table
+                for row_index, row_cells in enumerate(block["cells"]):
+                    for column_index, cell_data in enumerate(row_cells):
+                        text_frame = table.cell(row_index, column_index).text_frame
+                        text_frame.clear()
+                        paragraph = text_frame.paragraphs[0]
+                        run = paragraph.add_run()
+                        run.text = cell_data["text"]
+                        run.font.size = Pt(cell_data.get("font_size", 18))
+                continue
+
             if block.get("content_type") == "image":
                 image_path = Path(block["image_path"])
                 slide.shapes.add_picture(

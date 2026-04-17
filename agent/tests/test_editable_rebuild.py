@@ -277,3 +277,29 @@ def test_build_editable_rebuild_uses_two_column_width_limits_for_body_blocks(tmp
     assert left_shape.width <= Inches(5.1)
     assert right_shape.left >= Inches(6.8)
     assert right_shape.width <= Inches(5.1)
+
+
+def test_build_editable_rebuild_renders_detected_tables_as_ppt_tables(tmp_path):
+    blocks = [
+        {"text": "Quarterly metrics", "slide_index": 0, "x": 1, "y": 0.8, "width": 4.4, "height": 0.7, "font_size": 28},
+        {"text": "Region", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.1, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 4.0, "y": 2.0, "width": 2.1, "height": 0.45, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.1, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 4.0, "y": 2.7, "width": 2.1, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-table.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    slide = presentation.slides[0]
+    table_shapes = [shape for shape in slide.shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE]
+
+    assert len(table_shapes) == 1
+    table = table_shapes[0].table
+    assert len(table.rows) == 2
+    assert len(table.columns) == 2
+    assert table.cell(0, 0).text == "Region"
+    assert table.cell(0, 1).text == "Revenue"
+    assert table.cell(1, 0).text == "APAC"
+    assert table.cell(1, 1).text == "$2.4M"
