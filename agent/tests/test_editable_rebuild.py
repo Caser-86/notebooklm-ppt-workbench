@@ -517,3 +517,32 @@ def test_build_editable_rebuild_styles_second_header_row_in_multilevel_tables(tm
     assert second_header_fill == RGBColor(0xE9, 0xEE, 0xF7)
     assert body_fill != second_header_fill
     assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
+
+
+def test_build_editable_rebuild_handles_constrained_cross_merges(tmp_path):
+    blocks = [
+        {"text": "Business review", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.4, "height": 0.6, "font_size": 26},
+        {"text": "Commercial", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.8, "height": 0.45, "font_size": 18},
+        {"text": "Operations", "slide_index": 0, "x": 5.6, "y": 1.5, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "Category", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 3.4, "y": 2.0, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "Utilization", "slide_index": 0, "x": 5.6, "y": 2.0, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "Enterprise", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.0, "height": 1.0, "font_size": 18},
+        {"text": "APAC + EMEA", "slide_index": 0, "x": 3.4, "y": 2.7, "width": 1.7, "height": 1.0, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.6, "y": 2.7, "width": 1.6, "height": 0.45, "font_size": 18},
+        {"text": "79%", "slide_index": 0, "x": 5.6, "y": 3.3, "width": 1.6, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-constrained-cross-merge.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    assert len(table.rows) == 4
+    assert len(table.columns) == 3
+    assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(2, 0)._tc.xml
+    assert 'rowSpan="2"' in table.cell(2, 1)._tc.xml
+    assert table.cell(2, 2).text == "81%"
+    assert table.cell(3, 2).text == "79%"
