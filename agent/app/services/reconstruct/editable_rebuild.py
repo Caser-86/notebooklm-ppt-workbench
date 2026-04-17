@@ -85,6 +85,7 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                 table = table_shape.table
                 for column_index, column_width in enumerate(block.get("column_widths", [])):
                     table.columns[column_index].width = Inches(column_width)
+                header_rows = int(block.get("header_rows", 1))
                 for row_index, row_cells in enumerate(block["cells"]):
                     for column_index, cell_data in enumerate(row_cells):
                         if cell_data.get("merged"):
@@ -94,14 +95,14 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                         rowspan = int(cell_data.get("rowspan", 1))
                         if colspan > 1 or rowspan > 1:
                             cell.merge(table.cell(row_index + rowspan - 1, column_index + colspan - 1))
-                        style_table_cell(cell, is_header=row_index == 0)
+                        style_table_cell(cell, is_header=row_index < header_rows)
                         text_frame = cell.text_frame
                         text_frame.clear()
                         paragraph = text_frame.paragraphs[0]
                         run = paragraph.add_run()
                         run.text = cell_data["text"]
                         run.font.size = Pt(cell_data.get("font_size", 18))
-                        run.font.bold = row_index == 0
+                        run.font.bold = row_index < header_rows
                 continue
 
             if block.get("content_type") == "image":

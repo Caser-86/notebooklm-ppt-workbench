@@ -88,6 +88,12 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
         base_column_widths[column_index]
         for column_index in range(len(column_positions))
     ]
+    first_row_has_group_header = any(
+        (cell.get("colspan", 1) > 1)
+        for cell in table_cells[0]
+        if not cell.get("merged")
+    )
+    header_rows = 2 if first_row_has_group_header and len(row_positions) > 2 else 1
 
     table_block = {
         "slide_index": body_blocks[0]["slide_index"],
@@ -102,6 +108,7 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
         "cols": len(column_positions),
         "cells": table_cells,
         "column_widths": column_widths,
+        "header_rows": header_rows,
     }
 
     remaining_blocks = [block for block in slide_blocks if block not in body_blocks]

@@ -426,3 +426,36 @@ def test_build_editable_rebuild_merges_first_column_cells_across_rows(tmp_path):
     assert table.cell(2, 1).text == "EMEA"
     assert table.cell(2, 2).text == "$1.8M"
     assert 'rowSpan="2"' in table.cell(1, 0)._tc.xml
+
+
+def test_build_editable_rebuild_styles_second_header_row_in_multilevel_tables(tmp_path):
+    blocks = [
+        {"text": "Business review", "slide_index": 0, "x": 1.0, "y": 0.8, "width": 6.2, "height": 0.6, "font_size": 26},
+        {"text": "Commercial", "slide_index": 0, "x": 1.0, "y": 1.5, "width": 4.9, "height": 0.45, "font_size": 18},
+        {"text": "Operations", "slide_index": 0, "x": 5.7, "y": 1.5, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "Region", "slide_index": 0, "x": 1.0, "y": 2.0, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "Revenue", "slide_index": 0, "x": 3.5, "y": 2.0, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "Utilization", "slide_index": 0, "x": 5.7, "y": 2.0, "width": 1.4, "height": 0.45, "font_size": 18},
+        {"text": "APAC", "slide_index": 0, "x": 1.0, "y": 2.7, "width": 2.0, "height": 0.45, "font_size": 18},
+        {"text": "$2.4M", "slide_index": 0, "x": 3.5, "y": 2.7, "width": 1.7, "height": 0.45, "font_size": 18},
+        {"text": "81%", "slide_index": 0, "x": 5.7, "y": 2.7, "width": 1.4, "height": 0.45, "font_size": 18},
+    ]
+    output_path = tmp_path / "editable-rebuild-multilevel-header.pptx"
+
+    build_editable_rebuild(blocks, output_path)
+
+    presentation = Presentation(output_path)
+    table = [shape for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE][0].table
+
+    top_header_run = table.cell(0, 0).text_frame.paragraphs[0].runs[0]
+    second_header_run = table.cell(1, 0).text_frame.paragraphs[0].runs[0]
+    body_run = table.cell(2, 0).text_frame.paragraphs[0].runs[0]
+    second_header_fill = table.cell(1, 0).fill.fore_color.rgb
+    body_fill = table.cell(2, 0).fill.fore_color.rgb
+
+    assert top_header_run.font.bold is True
+    assert second_header_run.font.bold is True
+    assert body_run.font.bold in (None, False)
+    assert second_header_fill == RGBColor(0xE9, 0xEE, 0xF7)
+    assert body_fill != second_header_fill
+    assert 'gridSpan="2"' in table.cell(0, 0)._tc.xml
