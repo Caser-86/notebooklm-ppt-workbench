@@ -47,8 +47,8 @@ def detect_table_blocks(slide_blocks: list[dict]) -> list[dict]:
             else:
                 break
         rowspan = 1
-        if column_index == 0:
-            for next_row in range(row_index + 1, min(len(row_positions), row_index + 3)):
+        max_rowspan_rows = 3 if column_index == 0 else 2
+        for next_row in range(row_index + 1, min(len(row_positions), row_index + max_rowspan_rows)):
                 if block_bottom >= row_positions[next_row] + 0.15:
                     rowspan += 1
                 else:
