@@ -666,6 +666,158 @@ describe("ProjectWorkspace", () => {
     vi.unstubAllGlobals();
   });
 
+  it("retries a failed job and refreshes project data", async () => {
+    const user = userEvent.setup();
+    let projectDetailFetchCount = 0;
+    let sourceHistoryFetchCount = 0;
+    let projectJobsFetchCount = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/projects/9/jobs")) {
+        projectJobsFetchCount += 1;
+        return {
+          json: async () => (
+            projectJobsFetchCount > 1
+              ? [
+                  {
+                    id: 22,
+                    project_id: 9,
+                    job_type: "analyze_sources",
+                    status: "succeeded",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:10:00Z",
+                  },
+                  {
+                    id: 21,
+                    project_id: 9,
+                    job_type: "analyze_sources",
+                    status: "failed",
+                    result_json: {},
+                    error_message: "Source analysis timed out",
+                    created_at: "2026-04-19T01:09:00Z",
+                  },
+                ]
+              : [
+                  {
+                    id: 21,
+                    project_id: 9,
+                    job_type: "analyze_sources",
+                    status: "failed",
+                    result_json: {},
+                    error_message: "Source analysis timed out",
+                    created_at: "2026-04-19T01:09:00Z",
+                  },
+                ]
+          ),
+        };
+      }
+      if (url.includes("/jobs/22")) {
+        return {
+          json: async () => ({
+            id: 22,
+            project_id: 9,
+            job_type: "analyze_sources",
+            status: "succeeded",
+            result_json: {
+              revision_number: 2,
+              source_manifest: {
+                urls: ["https://example.com/retried"],
+                file_paths: [],
+                image_paths: [],
+                audio_paths: [],
+                video_paths: [],
+              },
+              insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+            },
+            error_message: "",
+            created_at: "2026-04-19T01:10:00Z",
+          }),
+        };
+      }
+      if (url.includes("/jobs/21/retry") && init?.method === "POST") {
+        return {
+          json: async () => ({
+            job_id: 22,
+            status: "queued",
+          }),
+        };
+      }
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        sourceHistoryFetchCount += 1;
+        return {
+          json: async () => (
+            sourceHistoryFetchCount > 1
+              ? [
+                  {
+                    id: 2,
+                    revision_number: 2,
+                    source_manifest: {
+                      urls: ["https://example.com/retried"],
+                    },
+                    insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+                  },
+                  {
+                    id: 1,
+                    revision_number: 1,
+                    source_manifest: {
+                      urls: ["https://example.com/original"],
+                    },
+                    insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+                  },
+                ]
+              : [
+                  {
+                    id: 1,
+                    revision_number: 1,
+                    source_manifest: {
+                      urls: ["https://example.com/original"],
+                    },
+                    insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+                  },
+                ]
+          ),
+        };
+      }
+      if (url.endsWith("/projects/9") && (!init || init.method === undefined)) {
+        projectDetailFetchCount += 1;
+        return {
+          json: async () => ({
+            id: 9,
+            title: "Retry project",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Retry brief",
+            prompt_draft: "Retry prompt",
+            source_manifest: {
+              urls: projectDetailFetchCount > 1 ? ["https://example.com/retried"] : ["https://example.com/original"],
+            },
+            insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={9} />);
+
+    expect(await screen.findByText(/Source analysis timed out/, { selector: "p" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "重试" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/jobs/21/retry", expect.objectContaining({ method: "POST" }));
+    expect((await screen.findAllByText("https://example.com/retried")).length).toBeGreaterThan(0);
+
+    vi.unstubAllGlobals();
+  });
+
   it("compares two source revisions side by side", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

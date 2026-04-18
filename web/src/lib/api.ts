@@ -100,6 +100,13 @@ export async function fetchJob(jobId: number): Promise<JobRead> {
   return response.json();
 }
 
+export async function retryJob(jobId: number): Promise<JobEnqueueResponse> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}/retry`, {
+    method: "POST",
+  });
+  return response.json();
+}
+
 export async function uploadProjectPptx(projectId: number, file: File): Promise<JobEnqueueResponse> {
   const formData = new FormData();
   formData.append("file", file);

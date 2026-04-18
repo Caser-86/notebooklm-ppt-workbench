@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -38,7 +40,43 @@ def test_project_job_list_returns_created_jobs():
     response = client.get(f"/projects/{project['id']}/jobs")
 
     assert response.status_code == 200
-    assert any(job["id"] == created["id"] and job["job_type"] == "generate" for job in response.json())
+    assert any(
+        job["id"] == created["id"] and job["job_type"] == "generate" and "created_at" in job
+        for job in response.json()
+    )
+
+
+def test_retry_failed_job_enqueues_new_job():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Retry deck", "preferred_language": "zh-CN"}).json()
+
+    with Session(db_module.engine) as session:
+        failed_job = Job(
+            project_id=project["id"],
+            job_type="analyze_sources",
+            status="failed",
+            payload_json='{"prompt":"retry me","urls":[],"file_paths":[],"image_paths":[],"audio_paths":[],"video_paths":[]}',
+            result_json="{}",
+            error_message="Original failure",
+        )
+        session.add(failed_job)
+        session.commit()
+        session.refresh(failed_job)
+
+    response = client.post(f"/jobs/{failed_job.id}/retry")
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body["status"] == "queued"
+    assert body["job_id"] != failed_job.id
+
+    with Session(db_module.engine) as session:
+        retried_job = session.get(Job, body["job_id"])
+        assert retried_job is not None
+        assert retried_job.project_id == project["id"]
+        assert retried_job.job_type == "analyze_sources"
+        assert retried_job.status == "queued"
+        assert json.loads(retried_job.payload_json) == json.loads(failed_job.payload_json)
 
 
 def test_list_projects_returns_created_projects():

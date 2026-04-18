@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
@@ -76,6 +76,7 @@ def get_job(job_id: int, session: Session = Depends(get_session)) -> JobRead:
         status=job.status,
         result_json=json.loads(job.result_json or "{}"),
         error_message=job.error_message,
+        created_at=job.created_at,
     )
 
 
@@ -92,9 +93,27 @@ def list_project_jobs(project_id: int, session: Session = Depends(get_session)) 
             status=job.status,
             result_json=json.loads(job.result_json or "{}"),
             error_message=job.error_message,
+            created_at=job.created_at,
         )
         for job in jobs
     ]
+
+
+@router.post("/jobs/{job_id}/retry", response_model=JobEnqueueResponse, status_code=status.HTTP_202_ACCEPTED)
+def retry_job(job_id: int, session: Session = Depends(get_session)) -> JobEnqueueResponse:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    if job.status != "failed":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only failed jobs can be retried")
+
+    retried_job = enqueue_job(
+        session,
+        project_id=job.project_id,
+        job_type=job.job_type,
+        payload=json.loads(job.payload_json or "{}"),
+    )
+    return JobEnqueueResponse(job_id=retried_job.id or 0, status=retried_job.status)
 
 
 @router.post("/projects/{project_id}/imports/pptx", response_model=JobEnqueueResponse, status_code=status.HTTP_202_ACCEPTED)

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -63,6 +65,7 @@ class JobRead(BaseModel):
     status: str
     result_json: dict = {}
     error_message: str = ""
+    created_at: datetime
 
 
 class JobEnqueueResponse(BaseModel):

@@ -13,6 +13,7 @@ import {
   fetchProjectRebuilds,
   fetchProjectSourceHistory,
   rebuildProjectImport,
+  retryJob,
   submitManualExportRebuild,
   uploadProjectPptx,
   updateProjectDetail,
@@ -291,6 +292,79 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     return await fetchJob(jobId);
+  }
+
+  async function handleRetryJob(jobId: number) {
+    if (!projectId) {
+      return;
+    }
+
+    const originalJob = jobs.find((job) => job.id === jobId);
+    if (!originalJob) {
+      return;
+    }
+
+    setJobStatus("queued");
+    setJobError("");
+    const queued = await retryJob(jobId);
+    const job = await pollJobUntilFinished(queued.job_id);
+
+    if (originalJob.job_type === "analyze_sources") {
+      const [detail, sourceRevisions, projectJobs] = await Promise.all([
+        fetchProjectDetail(projectId),
+        fetchProjectSourceHistory(projectId),
+        fetchProjectJobs(projectId),
+      ]);
+      startTransition(() => {
+        setInsightSummary(detail.insight_summary || "");
+        setSourceHistory(sourceRevisions);
+        setExpandedRevisionId(sourceRevisions[0]?.id ?? null);
+        setCompareNewerRevisionId(sourceRevisions[0]?.id ?? null);
+        setCompareOlderRevisionId(sourceRevisions[1]?.id ?? null);
+        setJobStatus(job.status);
+        setJobError(job.error_message);
+        setJobs(projectJobs);
+      });
+      return;
+    }
+
+    if (originalJob.job_type === "import_pptx") {
+      const [refreshedImports, projectJobs] = await Promise.all([
+        fetchProjectImports(projectId),
+        fetchProjectJobs(projectId),
+      ]);
+      startTransition(() => {
+        setImports(refreshedImports);
+        setSelectedImportId(refreshedImports[0]?.id ?? null);
+        setSelectedImportedSlideIndex(refreshedImports[0]?.slide_assets[0]?.slide_index ?? null);
+        setJobStatus(job.status);
+        setJobError(job.error_message);
+        setJobs(projectJobs);
+      });
+      return;
+    }
+
+    if (originalJob.job_type === "rebuild_import") {
+      const [refreshedRebuilds, projectJobs] = await Promise.all([
+        fetchProjectRebuilds(projectId),
+        fetchProjectJobs(projectId),
+      ]);
+      startTransition(() => {
+        setRebuilds(refreshedRebuilds);
+        setArtifacts(refreshedRebuilds[0]?.artifacts ?? []);
+        setJobStatus(job.status);
+        setJobError(job.error_message);
+        setJobs(projectJobs);
+      });
+      return;
+    }
+
+    const projectJobs = await fetchProjectJobs(projectId);
+    startTransition(() => {
+      setJobStatus(job.status);
+      setJobError(job.error_message);
+      setJobs(projectJobs);
+    });
   }
 
   return (
@@ -824,6 +898,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         status={jobStatus}
         attentionReason={jobStatus === "needs_attention" ? "browser_login_required" : jobError}
         jobs={jobs}
+        onRetry={handleRetryJob}
       />
       <ArtifactGallery artifacts={artifacts} rebuilds={rebuilds} />
     </main>

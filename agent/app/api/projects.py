@@ -196,6 +196,7 @@ def list_project_jobs(project_id: int, session: Session = Depends(get_session)) 
             status=job.status,
             result_json=json.loads(job.result_json or "{}"),
             error_message=job.error_message,
+            created_at=job.created_at,
         )
         for job in jobs
     ]

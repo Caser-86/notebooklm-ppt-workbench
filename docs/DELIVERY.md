@@ -52,6 +52,7 @@ Implemented now:
   - NotebookLM handoff section
   - status section
   - project job history in the status area
+  - failed job details with manual retry
   - rebuilt download section
   - source revision compare and filtering
   - compare summary export into Prompt Studio
@@ -79,8 +80,8 @@ The following checks were run successfully in the current environment:
 
 Most recent verified counts on this branch:
 
-- Agent: `92 passed`
-- Web: `12 passed`
+- Agent: `93 passed`
+- Web: `15 passed`
 - Web build: success
 
 ## How To Run
@@ -125,7 +126,7 @@ In the web UI:
 - adjust the preset-based generation prompt
 - review the NotebookLM handoff instructions
 
-Some actions now queue background work rather than finishing inside the same request. The workbench reflects those states through the local job timeline.
+Some actions now queue background work rather than finishing inside the same request. The workbench reflects those states through the local job timeline, shows recent failures, and allows manual retry from the status area.
 
 ### Step B: Continue in NotebookLM
 

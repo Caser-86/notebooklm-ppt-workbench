@@ -75,6 +75,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 2. Confirm the request returns immediately.
 3. Confirm the job status progresses through queued/running/succeeded or failed.
 4. Confirm the workbench refreshes the affected section after success.
+5. If a job fails, confirm the error message is visible and the manual retry action enqueues a new job.
 
 ### Database migration
 

@@ -52,6 +52,7 @@ export type JobRead = {
   status: string;
   result_json: Record<string, unknown>;
   error_message: string;
+  created_at: string;
 };
 
 export type ManualExportRebuildResponse = {
