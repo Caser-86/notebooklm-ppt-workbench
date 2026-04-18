@@ -630,6 +630,10 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                   <span>{messages.workspace.importSourceType}: {entry.source_type}</span>
                   <span>{messages.workspace.importPageCount}: {entry.page_count}</span>
                   <span>{entry.status}</span>
+                  <span>Text: {entry.object_summary?.imported_text ?? 0}</span>
+                  <span>Images: {entry.object_summary?.imported_image ?? 0}</span>
+                  <span>Tables: {entry.object_summary?.imported_table ?? 0}</span>
+                  <span>Cards: {entry.object_summary?.imported_icon_card ?? 0}</span>
                   <button
                     className="secondary-action"
                     type="button"

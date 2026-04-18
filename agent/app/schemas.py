@@ -46,6 +46,7 @@ class ImportedPresentationRead(BaseModel):
     status: str
     page_count: int
     error_message: str
+    object_summary: dict[str, int] = {}
     slide_assets: list[ImportedSlideAssetRead] = []
 
 

@@ -93,13 +93,18 @@ async def upload_pptx_import(
     session.add(record)
 
     for slide in bundle.slides:
+        structure_json_path = ""
+        if slide.blocks:
+            structure_path = import_dir / f"slide-{slide.slide_index}-structure.json"
+            structure_path.write_text(json.dumps(slide.blocks, ensure_ascii=False), encoding="utf-8")
+            structure_json_path = str(structure_path)
         session.add(
             ImportedSlideAsset(
                 import_id=import_id,
                 slide_index=slide.slide_index,
                 preview_image_path=slide.preview_image_path,
                 text_dump=slide.text_dump,
-                structure_json_path=slide.structure_json_path,
+                structure_json_path=structure_json_path,
             )
         )
     session.commit()
@@ -131,13 +136,20 @@ def rebuild_from_import(import_id: int, session: Session = Depends(get_session))
     display_path = artifact_dir / "display-clone.pptx"
     editable_path = artifact_dir / "editable-rebuild.pptx"
 
-    ocr_blocks = []
+    normalized_blocks = []
     for asset in slide_assets:
+        if asset.structure_json_path:
+            structure_path = Path(asset.structure_json_path)
+            if structure_path.exists():
+                normalized_blocks.extend(json.loads(structure_path.read_text(encoding="utf-8")))
+                continue
+
         cursor_y = 1.0
         for line in [line for line in asset.text_dump.splitlines() if line.strip()]:
-            ocr_blocks.append(
+            normalized_blocks.append(
                 {
                     "text": line,
+                    "content_type": "text",
                     "slide_index": asset.slide_index,
                     "x": 1,
                     "y": cursor_y,
@@ -147,10 +159,11 @@ def rebuild_from_import(import_id: int, session: Session = Depends(get_session))
                 }
             )
             cursor_y += 0.8
-    if not ocr_blocks:
-        ocr_blocks = [
+    if not normalized_blocks:
+        normalized_blocks = [
             {
                 "text": imported.filename,
+                "content_type": "text",
                 "slide_index": 1,
                 "x": 1,
                 "y": 1,
@@ -161,7 +174,7 @@ def rebuild_from_import(import_id: int, session: Session = Depends(get_session))
         ]
 
     build_display_clone(slide_paths, display_path)
-    build_editable_rebuild(ocr_blocks, editable_path)
+    build_editable_rebuild(normalized_blocks, editable_path)
 
     rebuild = RebuildVersion(
         project_id=imported.project_id,

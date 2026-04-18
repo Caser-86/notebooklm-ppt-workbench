@@ -3,11 +3,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 
 PLACEHOLDER_PNG_BYTES = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wn7Zp4AAAAASUVORK5CYII="
 )
+EMU_PER_INCH = 914400
 
 
 @dataclass
@@ -16,6 +18,7 @@ class ImportedSlideBundle:
     preview_image_path: str
     text_dump: str
     structure_json_path: str
+    blocks: list[dict]
 
 
 @dataclass
@@ -42,6 +45,10 @@ def extract_pptx_assets(project_id: int, pptx_path: Path, import_dir: Path) -> I
     slides: list[ImportedSlideBundle] = []
 
     for index, slide in enumerate(presentation.slides, start=1):
+        blocks = _extract_text_blocks(slide, index)
+        blocks.extend(_extract_picture_blocks(slide, index, import_dir))
+        blocks.extend(_extract_table_blocks(slide, index))
+        blocks = _group_imported_icon_cards(blocks)
         text_dump = "\n".join(
             shape.text.strip()
             for shape in slide.shapes
@@ -55,6 +62,7 @@ def extract_pptx_assets(project_id: int, pptx_path: Path, import_dir: Path) -> I
                 preview_image_path=str(preview_path),
                 text_dump=text_dump,
                 structure_json_path="",
+                blocks=blocks,
             )
         )
 
@@ -68,3 +76,190 @@ def _iter_slide_texts(presentation: Presentation) -> list[str]:
             if hasattr(shape, "text") and shape.text:
                 texts.append(shape.text)
     return texts
+
+
+def _extract_text_blocks(slide, slide_index: int) -> list[dict]:
+    blocks: list[dict] = []
+    title_shape = getattr(slide.shapes, "title", None)
+
+    for shape in slide.shapes:
+        if not hasattr(shape, "text") or not shape.text or not shape.text.strip():
+            continue
+
+        run_font = None
+        if getattr(shape, "text_frame", None) and shape.text_frame.paragraphs:
+            first_paragraph = shape.text_frame.paragraphs[0]
+            if first_paragraph.runs:
+                run_font = first_paragraph.runs[0].font
+
+        blocks.append(
+            {
+                "slide_index": slide_index,
+                "content_type": "imported_text",
+                "text": shape.text.strip(),
+                "text_role": "title" if title_shape is not None and shape == title_shape else "body",
+                "x": shape.left / EMU_PER_INCH,
+                "y": shape.top / EMU_PER_INCH,
+                "width": shape.width / EMU_PER_INCH,
+                "height": shape.height / EMU_PER_INCH,
+                "font_size": (run_font.size.pt if run_font and run_font.size else 24),
+                "bold": bool(run_font.bold) if run_font and run_font.bold is not None else False,
+                "italic": bool(run_font.italic) if run_font and run_font.italic is not None else False,
+            }
+        )
+
+    return blocks
+
+
+def _extract_picture_blocks(slide, slide_index: int, import_dir: Path) -> list[dict]:
+    picture_blocks: list[dict] = []
+
+    for picture_index, shape in enumerate(slide.shapes, start=1):
+        if shape.shape_type != MSO_SHAPE_TYPE.PICTURE:
+            continue
+
+        suffix = Path(shape.image.filename or f"image-{picture_index}.png").suffix or ".png"
+        image_path = import_dir / f"slide-{slide_index}-image-{picture_index}{suffix}"
+        image_path.write_bytes(shape.image.blob)
+        picture_blocks.append(
+            {
+                "slide_index": slide_index,
+                "content_type": "imported_image",
+                "image_path": str(image_path),
+                "x": shape.left / EMU_PER_INCH,
+                "y": shape.top / EMU_PER_INCH,
+                "width": shape.width / EMU_PER_INCH,
+                "height": shape.height / EMU_PER_INCH,
+            }
+        )
+
+    return picture_blocks
+
+
+def _extract_table_blocks(slide, slide_index: int) -> list[dict]:
+    table_blocks: list[dict] = []
+
+    for shape in slide.shapes:
+        if not getattr(shape, "has_table", False):
+            continue
+
+        table = shape.table
+        table_blocks.append(
+            {
+                "slide_index": slide_index,
+                "content_type": "imported_table",
+                "x": shape.left / EMU_PER_INCH,
+                "y": shape.top / EMU_PER_INCH,
+                "width": shape.width / EMU_PER_INCH,
+                "height": shape.height / EMU_PER_INCH,
+                "rows": len(table.rows),
+                "cols": len(table.columns),
+                "cells": [
+                    [
+                        {
+                            "text": cell.text,
+                            "font_size": 18,
+                        }
+                        for cell in row.cells
+                    ]
+                    for row in table.rows
+                ],
+                "column_widths": [column.width / EMU_PER_INCH for column in table.columns],
+                "header_rows": 1,
+            }
+        )
+
+    return table_blocks
+
+
+def _group_imported_icon_cards(blocks: list[dict]) -> list[dict]:
+    image_blocks = [
+        block for block in blocks
+        if block.get("content_type") == "imported_image"
+        and block.get("width", 0) <= 1.1
+        and block.get("height", 0) <= 1.1
+    ]
+    text_blocks = [block for block in blocks if block.get("content_type") == "imported_text"]
+
+    if not image_blocks or len(text_blocks) < 2:
+        return blocks
+
+    consumed_ids: set[int] = set()
+    grouped_blocks: list[dict] = []
+
+    for image in image_blocks:
+        title_candidate = next(
+            (
+                block for block in text_blocks
+                if id(block) not in consumed_ids
+                and block.get("text_role") == "body"
+                and image["x"] + image["width"] <= block["x"] <= image["x"] + image["width"] + 1.6
+                and abs(block["y"] - image["y"]) <= 0.25
+            ),
+            None,
+        )
+        if title_candidate is None:
+            continue
+
+        body_candidate = next(
+            (
+                block for block in text_blocks
+                if id(block) not in consumed_ids
+                and block is not title_candidate
+                and block.get("text_role") == "body"
+                and block["x"] >= title_candidate["x"] - 0.1
+                and block["y"] >= title_candidate["y"] + title_candidate["height"] - 0.05
+                and block["y"] <= title_candidate["y"] + title_candidate["height"] + 0.9
+            ),
+            None,
+        )
+        if body_candidate is None:
+            continue
+
+        consumed_ids.add(id(title_candidate))
+        consumed_ids.add(id(body_candidate))
+        consumed_ids.add(id(image))
+        grouped_blocks.append(
+            {
+                "slide_index": image["slide_index"],
+                "content_type": "imported_icon_card",
+                "x": min(image["x"], title_candidate["x"], body_candidate["x"]),
+                "y": min(image["y"], title_candidate["y"], body_candidate["y"]),
+                "width": max(
+                    image["x"] + image["width"],
+                    title_candidate["x"] + title_candidate["width"],
+                    body_candidate["x"] + body_candidate["width"],
+                ) - min(image["x"], title_candidate["x"], body_candidate["x"]),
+                "height": max(
+                    image["y"] + image["height"],
+                    title_candidate["y"] + title_candidate["height"],
+                    body_candidate["y"] + body_candidate["height"],
+                ) - min(image["y"], title_candidate["y"], body_candidate["y"]),
+                "icon_path": image["image_path"],
+                "icon_x": image["x"],
+                "icon_y": image["y"],
+                "icon_width": image["width"],
+                "icon_height": image["height"],
+                "title_text": title_candidate["text"],
+                "title_x": title_candidate["x"],
+                "title_y": title_candidate["y"],
+                "title_width": title_candidate["width"],
+                "title_height": title_candidate["height"],
+                "title_font_size": title_candidate.get("font_size", 20),
+                "body_text": body_candidate["text"],
+                "body_x": body_candidate["x"],
+                "body_y": body_candidate["y"],
+                "body_width": body_candidate["width"],
+                "body_height": body_candidate["height"],
+                "body_font_size": body_candidate.get("font_size", 16),
+            }
+        )
+
+    if not grouped_blocks:
+        return blocks
+
+    remaining_blocks = [
+        block for block in blocks
+        if id(block) not in consumed_ids
+    ]
+    return sorted(remaining_blocks + grouped_blocks, key=lambda item: (item["y"], item["x"]))

@@ -69,11 +69,16 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
     presentation.slide_width = Inches(13.333)
     presentation.slide_height = Inches(7.5)
 
-    for slide_blocks in analyze_rebuild_layout(raw_blocks):
+    if any(str(block.get("content_type", "")).startswith("imported_") for block in raw_blocks):
+        slide_groups = _group_imported_blocks_by_slide(raw_blocks)
+    else:
+        slide_groups = analyze_rebuild_layout(raw_blocks)
+
+    for slide_blocks in slide_groups:
         slide = presentation.slides.add_slide(presentation.slide_layouts[6])
         for block in slide_blocks:
             left, top, width, height = resolve_render_geometry(block)
-            if block.get("content_type") == "table":
+            if block.get("content_type") in {"table", "imported_table"}:
                 table_shape = slide.shapes.add_table(
                     block["rows"],
                     block["cols"],
@@ -105,7 +110,7 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                         run.font.bold = row_index < header_rows
                 continue
 
-            if block.get("content_type") == "icon_card":
+            if block.get("content_type") in {"icon_card", "imported_icon_card"}:
                 slide.shapes.add_picture(
                     str(Path(block["icon_path"])),
                     left=Inches(block["icon_x"]),
@@ -140,7 +145,7 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                 body_run.font.size = Pt(block["body_font_size"])
                 continue
 
-            if block.get("content_type") == "image":
+            if block.get("content_type") in {"image", "imported_image"}:
                 image_path = Path(block["image_path"])
                 slide.shapes.add_picture(
                     str(image_path),
@@ -166,9 +171,29 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                 paragraph.level = 1 if paragraph_block.get("text_role") == "list_item" else 0
                 run = paragraph.add_run()
                 run.text = paragraph_block["text"]
-                run.font.size = Pt(paragraph_block["font_size"])
-                run.font.bold = paragraph_block.get("text_role") == "title"
-                run.font.italic = paragraph_block.get("text_role") == "caption"
+                run.font.size = Pt(paragraph_block.get("font_size", 18))
+                run.font.bold = (
+                    paragraph_block.get("bold")
+                    if paragraph_block.get("bold") is not None
+                    else paragraph_block.get("text_role") == "title"
+                )
+                run.font.italic = (
+                    paragraph_block.get("italic")
+                    if paragraph_block.get("italic") is not None
+                    else paragraph_block.get("text_role") == "caption"
+                )
 
     presentation.save(output_path)
     return output_path
+
+
+def _group_imported_blocks_by_slide(raw_blocks: list[dict]) -> list[list[dict]]:
+    grouped: dict[int, list[dict]] = {}
+    for block in raw_blocks:
+        slide_index = int(block.get("slide_index", 0))
+        grouped.setdefault(slide_index, []).append(dict(block))
+
+    return [
+        sorted(grouped[slide_index], key=lambda item: (item.get("y", 0), item.get("x", 0)))
+        for slide_index in sorted(grouped)
+    ]

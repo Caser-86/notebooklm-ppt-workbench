@@ -82,5 +82,6 @@ export type ImportedPresentation = {
   status: string;
   page_count: number;
   error_message: string;
+  object_summary: Record<string, number>;
   slide_assets: ImportedSlideAsset[];
 };

@@ -98,6 +98,12 @@ describe("ProjectWorkspace", () => {
             status: "ready",
             page_count: 1,
             error_message: "",
+            object_summary: {
+              imported_text: 2,
+              imported_image: 1,
+              imported_table: 0,
+              imported_icon_card: 0,
+            },
             slide_assets: [
               {
                 id: 1,
@@ -148,6 +154,8 @@ describe("ProjectWorkspace", () => {
     expect(await screen.findByText("demo.pptx")).toBeInTheDocument();
     expect(screen.getByText("来源类型: internal_generated")).toBeInTheDocument();
     expect(screen.getByText("页数: 1")).toBeInTheDocument();
+    expect(screen.getByText("Text: 2")).toBeInTheDocument();
+    expect(screen.getByText("Images: 1")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "从导入版本重建" })).toBeInTheDocument();
 
     vi.unstubAllGlobals();

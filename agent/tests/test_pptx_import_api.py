@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from app.main import app
 from app.services.artifacts import ARTIFACTS_ROOT
@@ -66,3 +67,23 @@ def test_imported_multi_slide_pptx_preserves_slide_count_in_rebuild(build_fixtur
 
     assert len(Presentation(display_path).slides) == 2
     assert len(Presentation(editable_path).slides) == 2
+
+
+def test_imported_table_rebuild_stays_editable_table(build_fixture_pptx_with_table):
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Table Import", "preferred_language": "zh-CN"}).json()
+    pptx_path = build_fixture_pptx_with_table("table-import.pptx")
+
+    with pptx_path.open("rb") as handle:
+        imported = client.post(
+            f"/projects/{project['id']}/imports/pptx",
+            files={"file": ("table-import.pptx", handle, PPTX_MIME)},
+        ).json()
+
+    rebuild = client.post(f"/imports/{imported['id']}/rebuild")
+
+    assert rebuild.status_code == 200
+    editable_path = ARTIFACTS_ROOT / str(project["id"]) / "rebuild-001" / "editable-rebuild.pptx"
+    presentation = Presentation(editable_path)
+
+    assert any(shape.has_table for shape in presentation.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE)

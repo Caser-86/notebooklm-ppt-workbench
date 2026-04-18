@@ -121,6 +121,18 @@ def serialize_import_record(record: ImportedPresentation, session: Session) -> I
             .order_by(ImportedSlideAsset.slide_index.asc())
         )
     )
+    object_summary: dict[str, int] = {}
+    for asset in slide_assets:
+        if not asset.structure_json_path:
+            continue
+        structure_path = Path(asset.structure_json_path)
+        if not structure_path.exists():
+            continue
+        for block in json.loads(structure_path.read_text(encoding="utf-8")):
+            content_type = block.get("content_type")
+            if content_type:
+                object_summary[content_type] = object_summary.get(content_type, 0) + 1
+
     return ImportedPresentationRead(
         id=record.id or 0,
         project_id=record.project_id,
@@ -129,6 +141,7 @@ def serialize_import_record(record: ImportedPresentation, session: Session) -> I
         status=record.status,
         page_count=record.page_count,
         error_message=record.error_message,
+        object_summary=object_summary,
         slide_assets=[
             ImportedSlideAssetRead(
                 id=asset.id or 0,
