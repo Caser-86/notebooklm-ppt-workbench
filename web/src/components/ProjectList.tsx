@@ -1,4 +1,5 @@
 import type { ProjectSummary } from "../lib/types";
+import { useI18n } from "../lib/i18n";
 
 type ProjectListProps = {
   projects: ProjectSummary[];
@@ -8,15 +9,33 @@ type ProjectListProps = {
 };
 
 export function ProjectList({ projects, selectedProjectId, onSelectProject, onCreateProject }: ProjectListProps) {
+  const { locale, setLocale, messages } = useI18n();
+
   return (
     <aside className="project-rail">
       <div className="project-rail__brand">
         <p className="eyebrow">NotebookLM PPT</p>
-        <h1>Projects</h1>
-        <p className="project-rail__tagline">Prepare prompts here, generate in NotebookLM, then come back for editable rebuilds.</p>
+        <h1>{messages.projectRail.title}</h1>
+        <p className="project-rail__tagline">{messages.projectRail.tagline}</p>
+      </div>
+      <div className="handoff-actions">
+        <button
+          className={locale === "zh-CN" ? "primary-action" : "secondary-action"}
+          type="button"
+          onClick={() => setLocale("zh-CN")}
+        >
+          中文
+        </button>
+        <button
+          className={locale === "en" ? "primary-action" : "secondary-action"}
+          type="button"
+          onClick={() => setLocale("en")}
+        >
+          English
+        </button>
       </div>
       <button className="primary-action" type="button" onClick={onCreateProject}>
-        New project
+        {messages.projectRail.newProject}
       </button>
       <div className="project-rail__projects">
         {projects.map((project) => (
@@ -31,12 +50,11 @@ export function ProjectList({ projects, selectedProjectId, onSelectProject, onCr
         ))}
       </div>
       <div className="project-rail__flow">
-        <p className="eyebrow">Flow</p>
+        <p className="eyebrow">{messages.projectRail.flow}</p>
         <ol>
-          <li>Collect sources</li>
-          <li>Refine the generation prompt</li>
-          <li>Generate in NotebookLM</li>
-          <li>Return with the export package</li>
+          {messages.projectRail.flowSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
         </ol>
       </div>
     </aside>

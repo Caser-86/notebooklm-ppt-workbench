@@ -7,15 +7,15 @@ describe("ProjectWorkspace", () => {
   it("shows the manual NotebookLM handoff steps", () => {
     render(<ProjectWorkspace projectId={null} />);
 
-    expect(screen.getByText("Semi-automatic mode")).toBeInTheDocument();
+    expect(screen.getByText("半自动模式")).toBeInTheDocument();
     expect(
-      screen.getByText("This workspace prepares the prompt and rebuilds the exported deck, while you generate and export inside NotebookLM."),
+      screen.getByText("这个工作台负责准备提示词并重建导出的 deck，而生成与导出仍在 NotebookLM 中完成。"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Continue in NotebookLM")).toBeInTheDocument();
-    expect(screen.getByText("Paste the prompt into NotebookLM and generate the deck there.")).toBeInTheDocument();
-    expect(screen.getByText("Export the deck from NotebookLM, then return here for rebuild and download.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open NotebookLM" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mark export ready" })).toBeInTheDocument();
+    expect(screen.getByText("继续到 NotebookLM")).toBeInTheDocument();
+    expect(screen.getByText("把提示词粘贴到 NotebookLM 里，在那里生成 deck。")).toBeInTheDocument();
+    expect(screen.getByText("从 NotebookLM 导出 deck 后，再回到这里做重建和下载。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "打开 NotebookLM" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "标记导出已就绪" })).toBeInTheDocument();
   });
 
   it("uploads exported files and shows rebuilt downloads from the agent response", async () => {
@@ -55,15 +55,15 @@ describe("ProjectWorkspace", () => {
 
     render(<ProjectWorkspace projectId={1} />);
 
-    const slideInput = screen.getByLabelText("Exported slide images");
+    const slideInput = screen.getByLabelText("导出的 slide 图片");
     const file = new File(["slide"], "slide-1.png", { type: "image/png" });
 
     await user.upload(slideInput, file);
-    await user.click(screen.getByRole("button", { name: "Mark export ready" }));
+    await user.click(screen.getByRole("button", { name: "标记导出已就绪" }));
 
     expect(fetchMock).toHaveBeenCalledTimes(4);
-    const displayLinks = await screen.findAllByRole("link", { name: "Display clone" });
-    const editableLinks = screen.getAllByRole("link", { name: "Editable rebuild" });
+    const displayLinks = await screen.findAllByRole("link", { name: "展示版 clone" });
+    const editableLinks = screen.getAllByRole("link", { name: "可编辑重建版" });
 
     expect(displayLinks).toHaveLength(2);
     expect(editableLinks).toHaveLength(2);
@@ -111,11 +111,11 @@ describe("ProjectWorkspace", () => {
 
     expect(await screen.findByDisplayValue("Loaded brief")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Loaded prompt")).toBeInTheDocument();
-    expect(screen.getByLabelText("Source links")).toHaveValue("https://example.com/one\nhttps://example.com/two");
-    expect(screen.getByLabelText("Source file paths")).toHaveValue("D:/docs/launch-brief.txt");
-    expect(screen.getByLabelText("Image file paths")).toHaveValue("D:/media/cover.png");
-    expect(screen.getByLabelText("Audio file paths")).toHaveValue("D:/media/voice.mp3");
-    expect(screen.getByLabelText("Video file paths")).toHaveValue("D:/media/demo.mp4");
+    expect(screen.getByLabelText("来源链接")).toHaveValue("https://example.com/one\nhttps://example.com/two");
+    expect(screen.getByLabelText("来源文件路径")).toHaveValue("D:/docs/launch-brief.txt");
+    expect(screen.getByLabelText("图片文件路径")).toHaveValue("D:/media/cover.png");
+    expect(screen.getByLabelText("音频文件路径")).toHaveValue("D:/media/voice.mp3");
+    expect(screen.getByLabelText("视频文件路径")).toHaveValue("D:/media/demo.mp4");
     expect(screen.getByText("2 urls, 1 file, 1 image, 1 audio, 1 video")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
@@ -181,13 +181,13 @@ describe("ProjectWorkspace", () => {
     const briefInput = await screen.findByDisplayValue("Original brief");
     const promptInput = screen.getByDisplayValue("Original prompt");
     const sourceLinksInput = screen.getByDisplayValue("https://example.com/start");
-    const sourceFilesInput = screen.getByLabelText("Source file paths");
+    const sourceFilesInput = screen.getByLabelText("来源文件路径");
     expect(sourceFilesInput).toHaveValue("D:/docs/original.txt");
-    const imagePathsInput = screen.getByLabelText("Image file paths");
+    const imagePathsInput = screen.getByLabelText("图片文件路径");
     expect(imagePathsInput).toHaveValue("D:/media/original.png");
-    const audioPathsInput = screen.getByLabelText("Audio file paths");
+    const audioPathsInput = screen.getByLabelText("音频文件路径");
     expect(audioPathsInput).toHaveValue("D:/media/original.mp3");
-    const videoPathsInput = screen.getByLabelText("Video file paths");
+    const videoPathsInput = screen.getByLabelText("视频文件路径");
     expect(videoPathsInput).toHaveValue("D:/media/original.mp4");
 
     await user.clear(briefInput);
@@ -204,7 +204,7 @@ describe("ProjectWorkspace", () => {
     await user.type(audioPathsInput, "D:/media/updated.mp3");
     await user.clear(videoPathsInput);
     await user.type(videoPathsInput, "D:/media/updated.mp4");
-    await user.click(screen.getByRole("button", { name: "Save project details" }));
+    await user.click(screen.getByRole("button", { name: "保存项目详情" }));
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://127.0.0.1:8000/projects/4",
@@ -282,13 +282,13 @@ describe("ProjectWorkspace", () => {
     render(<ProjectWorkspace projectId={5} />);
 
     const sourceLinksInput = await screen.findByDisplayValue("https://example.com/launch");
-    const sourceFilesInput = screen.getByLabelText("Source file paths");
+    const sourceFilesInput = screen.getByLabelText("来源文件路径");
     expect(sourceFilesInput).toHaveValue("D:/docs/launch.txt");
-    const imagePathsInput = screen.getByLabelText("Image file paths");
+    const imagePathsInput = screen.getByLabelText("图片文件路径");
     expect(imagePathsInput).toHaveValue("D:/media/launch.png");
-    const audioPathsInput = screen.getByLabelText("Audio file paths");
+    const audioPathsInput = screen.getByLabelText("音频文件路径");
     expect(audioPathsInput).toHaveValue("D:/media/launch.mp3");
-    const videoPathsInput = screen.getByLabelText("Video file paths");
+    const videoPathsInput = screen.getByLabelText("视频文件路径");
     expect(videoPathsInput).toHaveValue("D:/media/launch.mp4");
 
     await user.clear(sourceLinksInput);
@@ -301,29 +301,29 @@ describe("ProjectWorkspace", () => {
     await user.type(audioPathsInput, "D:/media/launch.mp3");
     await user.clear(videoPathsInput);
     await user.type(videoPathsInput, "D:/media/launch.mp4\nD:/media/demo.mp4");
-    await user.click(screen.getByRole("button", { name: "Analyze sources" }));
+    await user.click(screen.getByRole("button", { name: "分析来源" }));
 
     expect((await screen.findAllByText("2 urls, 2 files, 2 images, 1 audio, 2 videos")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Recent source versions")).toBeInTheDocument();
-    expect(screen.getAllByText("Revision 2").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("+ URL: https://example.com/faq").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("+ File: D:/docs/faq.txt").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("+ Image: D:/media/gallery.png").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("+ Video: D:/media/demo.mp4").length).toBeGreaterThan(0);
+    expect(screen.getByText("最近的来源版本")).toBeInTheDocument();
+    expect(screen.getAllByText("版本 2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ 链接: https://example.com/faq").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ 文件: D:/docs/faq.txt").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ 图片: D:/media/gallery.png").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("+ 视频: D:/media/demo.mp4").length).toBeGreaterThan(0);
 
-    expect(screen.getAllByText("URLs").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Files").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Images").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Audio").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Video").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("链接").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("文件").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("图片").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("音频").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("视频").length).toBeGreaterThan(0);
     expect(screen.getAllByText("https://example.com/launch").length).toBeGreaterThan(0);
     expect(screen.getAllByText("D:/docs/faq.txt").length).toBeGreaterThan(0);
     expect(screen.getAllByText("D:/media/gallery.png").length).toBeGreaterThan(0);
     expect(screen.getAllByText("D:/media/launch.mp3").length).toBeGreaterThan(0);
     expect(screen.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
 
-    await user.click(screen.getByRole("button", { name: "Show full sources for Revision 1" }));
-    expect(screen.getAllByText("URLs").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "展开版本 1 全部来源" }));
+    expect(screen.getAllByText("链接").length).toBeGreaterThan(0);
 
     vi.unstubAllGlobals();
   });
@@ -401,49 +401,49 @@ describe("ProjectWorkspace", () => {
 
     render(<ProjectWorkspace projectId={6} />);
 
-    expect(await screen.findByText("Compare revisions")).toBeInTheDocument();
-    const newerSelect = screen.getByLabelText("Compare newer revision");
-    const olderSelect = screen.getByLabelText("Against revision");
+    expect(await screen.findByText("比较版本")).toBeInTheDocument();
+    const newerSelect = screen.getByLabelText("比较较新版本");
+    const olderSelect = screen.getByLabelText("对比版本");
 
     await user.selectOptions(newerSelect, "3");
     await user.selectOptions(olderSelect, "2");
 
-    const comparePanel = screen.getByText("Compare revisions").closest(".source-compare-panel") as HTMLElement;
+    const comparePanel = screen.getByText("比较版本").closest(".source-compare-panel") as HTMLElement;
     const compareQueries = within(comparePanel);
 
-    expect(compareQueries.getByText("Revision 3 snapshot")).toBeInTheDocument();
-    expect(compareQueries.getByText("Revision 2 snapshot")).toBeInTheDocument();
-    expect(compareQueries.getByText("Added in Revision 3")).toBeInTheDocument();
-    expect(compareQueries.getByText("Removed from Revision 2")).toBeInTheDocument();
-    expect(compareQueries.getByText("+ URL: https://example.com/roadmap")).toBeInTheDocument();
-    expect(compareQueries.getByText("No removed sources in this compare.")).toBeInTheDocument();
+    expect(compareQueries.getByText("版本 3 快照")).toBeInTheDocument();
+    expect(compareQueries.getByText("版本 2 快照")).toBeInTheDocument();
+    expect(compareQueries.getByText("版本 3 新增")).toBeInTheDocument();
+    expect(compareQueries.getByText("相对版本 2 移除")).toBeInTheDocument();
+    expect(compareQueries.getByText("+ 链接: https://example.com/roadmap")).toBeInTheDocument();
+    expect(compareQueries.getByText("这次对比没有移除来源。")).toBeInTheDocument();
     expect(compareQueries.getAllByText("D:/docs/roadmap.txt").length).toBeGreaterThan(0);
     expect(compareQueries.getAllByText("D:/media/demo.mp4").length).toBeGreaterThan(0);
     expect(compareQueries.getAllByText("D:/media/cover.png").length).toBeGreaterThan(0);
 
-    await user.click(compareQueries.getByRole("button", { name: "Images" }));
+    await user.click(compareQueries.getByRole("button", { name: "图片" }));
 
-    expect(compareQueries.queryByText("+ URL: https://example.com/roadmap")).not.toBeInTheDocument();
+    expect(compareQueries.queryByText("+ 链接: https://example.com/roadmap")).not.toBeInTheDocument();
     expect(compareQueries.queryByText("D:/docs/roadmap.txt")).not.toBeInTheDocument();
-    expect(compareQueries.getByText("No added sources in this compare.")).toBeInTheDocument();
+    expect(compareQueries.getByText("这次对比没有新增来源。")).toBeInTheDocument();
     expect(compareQueries.getAllByText("D:/media/cover.png").length).toBeGreaterThan(0);
 
-    await user.click(compareQueries.getByRole("checkbox", { name: "Show changes only" }));
+    await user.click(compareQueries.getByRole("checkbox", { name: "只看变化项" }));
 
     expect(compareQueries.queryByText("D:/media/cover.png")).not.toBeInTheDocument();
-    expect(compareQueries.getByText("No added sources in this compare.")).toBeInTheDocument();
-    expect(compareQueries.getByText("No removed sources in this compare.")).toBeInTheDocument();
+    expect(compareQueries.getByText("这次对比没有新增来源。")).toBeInTheDocument();
+    expect(compareQueries.getByText("这次对比没有移除来源。")).toBeInTheDocument();
 
-    await user.click(compareQueries.getByRole("button", { name: "Audio" }));
-    await user.click(compareQueries.getByRole("button", { name: "Use compare summary in prompt" }));
+    await user.click(compareQueries.getByRole("button", { name: "音频" }));
+    await user.click(compareQueries.getByRole("button", { name: "将比较摘要加入提示词" }));
 
-    const promptInput = screen.getByLabelText("Generation prompt");
+    const promptInput = screen.getByLabelText("生成提示词");
     expect((promptInput as HTMLTextAreaElement).value).toContain("Compare prompt");
-    expect((promptInput as HTMLTextAreaElement).value).toContain("Source compare summary");
-    expect((promptInput as HTMLTextAreaElement).value).toContain("Filter: Audio");
-    expect((promptInput as HTMLTextAreaElement).value).toContain("Added in Revision 3");
-    expect((promptInput as HTMLTextAreaElement).value).toContain("+ Audio: D:/media/voice.mp3");
-    expect((promptInput as HTMLTextAreaElement).value).not.toContain("+ URL: https://example.com/roadmap");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("来源比较摘要");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("筛选：音频");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("版本 3 新增");
+    expect((promptInput as HTMLTextAreaElement).value).toContain("+ 音频: D:/media/voice.mp3");
+    expect((promptInput as HTMLTextAreaElement).value).not.toContain("+ 链接: https://example.com/roadmap");
 
     vi.unstubAllGlobals();
   });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useI18n } from "../lib/i18n";
 
 type Preset = { id: string; label: string; body: string };
 
@@ -12,6 +13,7 @@ type PromptStudioProps = {
 
 export function PromptStudio(props: PromptStudioProps) {
   const [draftValue, setDraftValue] = useState(props.value);
+  const { messages } = useI18n();
 
   useEffect(() => {
     setDraftValue(props.value);
@@ -20,12 +22,12 @@ export function PromptStudio(props: PromptStudioProps) {
   return (
     <section className="workspace-section">
       <div className="section-copy">
-        <p className="eyebrow">Prompt studio</p>
-        <h3>Shape the deck before handoff</h3>
-        <p>Use presets to get a strong first draft, then tighten tone and structure before opening NotebookLM.</p>
+        <p className="eyebrow">{messages.promptStudio.eyebrow}</p>
+        <h3>{messages.promptStudio.title}</h3>
+        <p>{messages.promptStudio.description}</p>
       </div>
       <label>
-        Preset
+        {messages.promptStudio.preset}
         <select value={props.selectedPresetId} onChange={(event) => props.onPresetChange(event.target.value)}>
           {props.presets.map((preset) => (
             <option key={preset.id} value={preset.id}>
@@ -35,7 +37,7 @@ export function PromptStudio(props: PromptStudioProps) {
         </select>
       </label>
       <label>
-        Generation prompt
+        {messages.promptStudio.prompt}
         <textarea
           value={draftValue}
           onChange={(event) => {

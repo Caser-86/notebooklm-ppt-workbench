@@ -22,13 +22,13 @@ describe("ArtifactGallery", () => {
       />,
     );
 
-    expect(screen.getByText("Rebuilt downloads")).toBeInTheDocument();
+    expect(screen.getByText("重建下载")).toBeInTheDocument();
     expect(
-      screen.getByText("These files appear after you export the deck from NotebookLM and return here for rebuild."),
+      screen.getByText("这些文件会在你从 NotebookLM 导出 deck 并返回这里重建之后出现。"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Recent versions")).toBeInTheDocument();
-    expect(screen.getByText("Version 1")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Display clone" })).toHaveLength(2);
-    expect(screen.getAllByRole("link", { name: "Editable rebuild" })).toHaveLength(2);
+    expect(screen.getByText("最近版本")).toBeInTheDocument();
+    expect(screen.getByText("版本 1")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "展示版 clone" })).toHaveLength(2);
+    expect(screen.getAllByRole("link", { name: "可编辑重建版" })).toHaveLength(2);
   });
 });

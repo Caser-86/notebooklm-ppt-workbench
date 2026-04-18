@@ -15,7 +15,7 @@ describe("PromptStudio", () => {
       />,
     );
 
-    const textarea = screen.getByLabelText("Generation prompt");
+    const textarea = screen.getByLabelText("生成提示词");
     await user.type(textarea, " updated");
 
     expect(textarea).toHaveValue("Start here updated");

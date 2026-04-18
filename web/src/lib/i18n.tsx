@@ -1,0 +1,248 @@
+import { createContext, useContext, useState, type ReactNode } from "react";
+
+export type Locale = "zh-CN" | "en";
+
+const messages = {
+  "zh-CN": {
+    projectRail: {
+      title: "项目",
+      tagline: "在这里准备提示词，在 NotebookLM 中生成，然后回来做可编辑重建。",
+      newProject: "新建项目",
+      flow: "流程",
+      flowSteps: ["整理来源", "优化生成提示词", "在 NotebookLM 中生成", "带着导出包返回"],
+      language: "语言",
+    },
+    workspace: {
+      eyebrow: "工作台",
+      title: "工作台",
+      noProjectSelected: "未选择项目",
+      projectLabel: (id: number) => `项目 ${id}`,
+      introTitle: "半自动模式",
+      introDescription: "这个工作台负责准备提示词并重建导出的 deck，而生成与导出仍在 NotebookLM 中完成。",
+      projectDraftEyebrow: "项目草稿",
+      projectDraftTitle: "保存项目详情",
+      projectDraftDescription: "在交给 NotebookLM 之前，把当前 brief、提示词草稿和来源信息保存到项目里。",
+      saveProjectDetails: "保存项目详情",
+      sourceInsightEyebrow: "来源洞察",
+      sourceInsightTitle: "分析当前来源",
+      sourceInsightDescription: "持久化当前链接和文件路径，并为该项目生成一个轻量摘要。",
+      analyzeSources: "分析来源",
+      noSourceInsight: "还没有来源摘要。先分析当前链接和文件路径，再生成来源快照。",
+      recentSourceVersions: "最近的来源版本",
+      compareEyebrow: "对比",
+      compareTitle: "比较版本",
+      compareDescription: "在生成下一版 NotebookLM 提示词之前，并排检查任意两个来源快照。",
+      compareNewerRevision: "比较较新版本",
+      againstRevision: "对比版本",
+      showChangesOnly: "只看变化项",
+      all: "全部",
+      useCompareSummaryInPrompt: "将比较摘要加入提示词",
+      addedInRevision: (revision: number) => `版本 ${revision} 新增`,
+      removedFromRevision: (revision: number) => `相对版本 ${revision} 移除`,
+      noAddedSources: "这次对比没有新增来源。",
+      noRemovedSources: "这次对比没有移除来源。",
+      revisionSnapshot: (revision: number) => `版本 ${revision} 快照`,
+      revisionLabel: (revision: number) => `版本 ${revision}`,
+      showFullSources: (revision: number) => `展开版本 ${revision} 全部来源`,
+      hideFullSources: (revision: number) => `收起版本 ${revision} 全部来源`,
+      notebooklmEyebrow: "NotebookLM 交接",
+      notebooklmTitle: "继续到 NotebookLM",
+      notebooklmDescription1: "把提示词粘贴到 NotebookLM 里，在那里生成 deck。",
+      notebooklmDescription2: "从 NotebookLM 导出 deck 后，再回到这里做重建和下载。",
+      exportedSlideImages: "导出的 slide 图片",
+      ocrJsonOptional: "OCR JSON（可选）",
+      openNotebooklm: "打开 NotebookLM",
+      markExportReady: "标记导出已就绪",
+      rebuilding: "正在重建...",
+    },
+    sourceIntake: {
+      eyebrow: "输入",
+      title: "来源输入",
+      description: "把 brief、链接和支撑素材放进来，让这份 deck 有明确的内容基础。",
+      projectBrief: "项目 brief",
+      sourceLinks: "来源链接",
+      sourceFilePaths: "来源文件路径",
+      imageFilePaths: "图片文件路径",
+      audioFilePaths: "音频文件路径",
+      videoFilePaths: "视频文件路径",
+    },
+    promptStudio: {
+      eyebrow: "提示词工作台",
+      title: "在交接前打磨 deck",
+      description: "先用预设得到一个强初稿，再在打开 NotebookLM 之前收紧语气和结构。",
+      preset: "预设",
+      prompt: "生成提示词",
+      defaultPreset: "默认",
+      defaultBody: "从这里开始",
+    },
+    artifactGallery: {
+      eyebrow: "输出",
+      title: "重建下载",
+      description: "这些文件会在你从 NotebookLM 导出 deck 并返回这里重建之后出现。",
+      empty: "还没有重建文件。上传导出的 NotebookLM slides 并标记导出已就绪。",
+      recentVersions: "最近版本",
+      versionLabel: (version: number) => `版本 ${version}`,
+      artifactLabels: {
+        "display-clone": "展示版 clone",
+        "editable-rebuild": "可编辑重建版",
+      } as Record<string, string>,
+    },
+    jobTimeline: {
+      eyebrow: "状态",
+      title: "任务状态",
+      statusNeedsAttention: "需要你处理",
+      statusReadyToGenerate: "已准备好进入 NotebookLM",
+      browserLoginRequired: "请登录 Google，并在 NotebookLM 中完成这一步。",
+      finishInNotebooklm: "我已在 NotebookLM 中完成",
+    },
+    sourceCategories: {
+      urls: "链接",
+      file_paths: "文件",
+      image_paths: "图片",
+      audio_paths: "音频",
+      video_paths: "视频",
+    } as Record<string, string>,
+    compareSummary: {
+      title: "来源比较摘要",
+      newerRevision: (revision: number) => `较新版本：${revision}`,
+      olderRevision: (revision: number) => `对比版本：${revision}`,
+      filter: (label: string) => `筛选：${label}`,
+      changesOnly: (enabled: boolean) => `仅变化项：${enabled ? "开" : "关"}`,
+    },
+  },
+  en: {
+    projectRail: {
+      title: "Projects",
+      tagline: "Prepare prompts here, generate in NotebookLM, then come back for editable rebuilds.",
+      newProject: "New project",
+      flow: "Flow",
+      flowSteps: ["Collect sources", "Refine the generation prompt", "Generate in NotebookLM", "Return with the export package"],
+      language: "Language",
+    },
+    workspace: {
+      eyebrow: "Workspace",
+      title: "Workspace",
+      noProjectSelected: "No project selected",
+      projectLabel: (id: number) => `Project ${id}`,
+      introTitle: "Semi-automatic mode",
+      introDescription: "This workspace prepares the prompt and rebuilds the exported deck, while you generate and export inside NotebookLM.",
+      projectDraftEyebrow: "Project draft",
+      projectDraftTitle: "Save project details",
+      projectDraftDescription: "Store the current brief, prompt draft, and source links with this project before handing off to NotebookLM.",
+      saveProjectDetails: "Save project details",
+      sourceInsightEyebrow: "Source insight",
+      sourceInsightTitle: "Analyze current sources",
+      sourceInsightDescription: "Persist the current URLs and file paths, then generate a lightweight intake summary for this project.",
+      analyzeSources: "Analyze sources",
+      noSourceInsight: "No source insight yet. Analyze the current links and file paths to persist a source snapshot.",
+      recentSourceVersions: "Recent source versions",
+      compareEyebrow: "Compare",
+      compareTitle: "Compare revisions",
+      compareDescription: "Review any two source snapshots side by side before generating the next NotebookLM draft.",
+      compareNewerRevision: "Compare newer revision",
+      againstRevision: "Against revision",
+      showChangesOnly: "Show changes only",
+      all: "All",
+      useCompareSummaryInPrompt: "Use compare summary in prompt",
+      addedInRevision: (revision: number) => `Added in Revision ${revision}`,
+      removedFromRevision: (revision: number) => `Removed from Revision ${revision}`,
+      noAddedSources: "No added sources in this compare.",
+      noRemovedSources: "No removed sources in this compare.",
+      revisionSnapshot: (revision: number) => `Revision ${revision} snapshot`,
+      revisionLabel: (revision: number) => `Revision ${revision}`,
+      showFullSources: (revision: number) => `Show full sources for Revision ${revision}`,
+      hideFullSources: (revision: number) => `Hide full sources for Revision ${revision}`,
+      notebooklmEyebrow: "NotebookLM handoff",
+      notebooklmTitle: "Continue in NotebookLM",
+      notebooklmDescription1: "Paste the prompt into NotebookLM and generate the deck there.",
+      notebooklmDescription2: "Export the deck from NotebookLM, then return here for rebuild and download.",
+      exportedSlideImages: "Exported slide images",
+      ocrJsonOptional: "OCR JSON (optional)",
+      openNotebooklm: "Open NotebookLM",
+      markExportReady: "Mark export ready",
+      rebuilding: "Rebuilding...",
+    },
+    sourceIntake: {
+      eyebrow: "Inputs",
+      title: "Source intake",
+      description: "Drop in the brief, links, and supporting material you want this deck to follow.",
+      projectBrief: "Project brief",
+      sourceLinks: "Source links",
+      sourceFilePaths: "Source file paths",
+      imageFilePaths: "Image file paths",
+      audioFilePaths: "Audio file paths",
+      videoFilePaths: "Video file paths",
+    },
+    promptStudio: {
+      eyebrow: "Prompt studio",
+      title: "Shape the deck before handoff",
+      description: "Use presets to get a strong first draft, then tighten tone and structure before opening NotebookLM.",
+      preset: "Preset",
+      prompt: "Generation prompt",
+      defaultPreset: "Default",
+      defaultBody: "Start here",
+    },
+    artifactGallery: {
+      eyebrow: "Outputs",
+      title: "Rebuilt downloads",
+      description: "These files appear after you export the deck from NotebookLM and return here for rebuild.",
+      empty: "No rebuilt files yet. Upload the exported NotebookLM slides and mark the export as ready.",
+      recentVersions: "Recent versions",
+      versionLabel: (version: number) => `Version ${version}`,
+      artifactLabels: {
+        "display-clone": "Display clone",
+        "editable-rebuild": "Editable rebuild",
+      } as Record<string, string>,
+    },
+    jobTimeline: {
+      eyebrow: "Status",
+      title: "Job status",
+      statusNeedsAttention: "Needs your action",
+      statusReadyToGenerate: "Ready for NotebookLM",
+      browserLoginRequired: "Sign in to Google and finish this step in NotebookLM.",
+      finishInNotebooklm: "I finished this in NotebookLM",
+    },
+    sourceCategories: {
+      urls: "URLs",
+      file_paths: "Files",
+      image_paths: "Images",
+      audio_paths: "Audio",
+      video_paths: "Video",
+    } as Record<string, string>,
+    compareSummary: {
+      title: "Source compare summary",
+      newerRevision: (revision: number) => `Newer revision: ${revision}`,
+      olderRevision: (revision: number) => `Against revision: ${revision}`,
+      filter: (label: string) => `Filter: ${label}`,
+      changesOnly: (enabled: boolean) => `Changes only: ${enabled ? "On" : "Off"}`,
+    },
+  },
+} as const;
+
+type MessageCatalog = (typeof messages)[Locale];
+
+type I18nContextValue = {
+  locale: Locale;
+  setLocale: (locale: Locale) => void;
+  messages: MessageCatalog;
+};
+
+const I18nContext = createContext<I18nContextValue>({
+  locale: "zh-CN",
+  setLocale: () => {},
+  messages: messages["zh-CN"],
+});
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [locale, setLocale] = useState<Locale>("zh-CN");
+
+  return (
+    <I18nContext.Provider value={{ locale, setLocale, messages: messages[locale] }}>
+      {children}
+    </I18nContext.Provider>
+  );
+}
+
+export function useI18n() {
+  return useContext(I18nContext);
+}

@@ -12,36 +12,46 @@ import {
   submitManualExportRebuild,
   updateProjectDetail,
 } from "../lib/api";
+import { useI18n } from "../lib/i18n";
 import type { DownloadArtifact, RebuildVersion, SourceRevision } from "../lib/types";
 
 const sourceCategories = [
-  { key: "urls", label: "URL", heading: "URLs" },
-  { key: "file_paths", label: "File", heading: "Files" },
-  { key: "image_paths", label: "Image", heading: "Images" },
-  { key: "audio_paths", label: "Audio", heading: "Audio" },
-  { key: "video_paths", label: "Video", heading: "Video" },
+  { key: "urls", diffLabel: "URL" },
+  { key: "file_paths", diffLabel: "File" },
+  { key: "image_paths", diffLabel: "Image" },
+  { key: "audio_paths", diffLabel: "Audio" },
+  { key: "video_paths", diffLabel: "Video" },
 ] as const;
 
 type SourceCategoryKey = (typeof sourceCategories)[number]["key"];
 type CompareCategoryFilter = "all" | SourceCategoryKey;
 
-function buildSourceRevisionDiffs(current: SourceRevision, previous?: SourceRevision) {
-  return sourceCategories.flatMap(({ key, label }) => {
+function buildSourceRevisionDiffs(
+  current: SourceRevision,
+  previous: SourceRevision | undefined,
+  categoryLabels: Record<string, string>,
+) {
+  return sourceCategories.flatMap(({ key, diffLabel }) => {
     const previousValues = new Set(previous?.source_manifest?.[key] ?? []);
     return (current.source_manifest?.[key] ?? [])
       .filter((value) => !previousValues.has(value))
-      .map((value) => `+ ${label}: ${value}`);
+      .map((value) => `+ ${categoryLabels[key] ?? diffLabel}: ${value}`);
   });
 }
 
-function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision, categoryFilter: CompareCategoryFilter = "all") {
+function buildSourceCompareDiffs(
+  newer: SourceRevision | undefined,
+  older: SourceRevision | undefined,
+  categoryLabels: Record<string, string>,
+  categoryFilter: CompareCategoryFilter = "all",
+) {
   const emptyGroups = { added: [] as string[], removed: [] as string[] };
   if (!newer || !older) {
     return emptyGroups;
   }
 
   return sourceCategories.reduce(
-    (groups, { key, label }) => {
+    (groups, { key, diffLabel }) => {
       if (categoryFilter !== "all" && key !== categoryFilter) {
         return groups;
       }
@@ -52,10 +62,10 @@ function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision,
       const newerSet = new Set(newerValues);
 
       groups.added.push(
-        ...newerValues.filter((value) => !olderSet.has(value)).map((value) => `+ ${label}: ${value}`),
+        ...newerValues.filter((value) => !olderSet.has(value)).map((value) => `+ ${categoryLabels[key] ?? diffLabel}: ${value}`),
       );
       groups.removed.push(
-        ...olderValues.filter((value) => !newerSet.has(value)).map((value) => `- ${label}: ${value}`),
+        ...olderValues.filter((value) => !newerSet.has(value)).map((value) => `- ${categoryLabels[key] ?? diffLabel}: ${value}`),
       );
 
       return groups;
@@ -67,11 +77,13 @@ function buildSourceCompareDiffs(newer?: SourceRevision, older?: SourceRevision,
 function buildSourceCompareSummary({
   newer,
   older,
+  categoryLabels,
   categoryFilter,
   changesOnly,
 }: {
   newer?: SourceRevision;
   older?: SourceRevision;
+  categoryLabels: Record<string, string>;
   categoryFilter: CompareCategoryFilter;
   changesOnly: boolean;
 }) {
@@ -79,10 +91,10 @@ function buildSourceCompareSummary({
     return "";
   }
 
-  const compareDiffs = buildSourceCompareDiffs(newer, older, categoryFilter);
+  const compareDiffs = buildSourceCompareDiffs(newer, older, categoryLabels, categoryFilter);
   const filterLabel = categoryFilter === "all"
-    ? "All"
-    : sourceCategories.find(({ key }) => key === categoryFilter)?.heading ?? "All";
+    ? categoryLabels.all ?? "All"
+    : categoryLabels[categoryFilter] ?? "All";
 
   const addedSection = compareDiffs.added.length > 0
     ? compareDiffs.added.join("\n")
@@ -92,14 +104,14 @@ function buildSourceCompareSummary({
     : "No removed sources in this compare.";
 
   return [
-    "Source compare summary",
-    `Newer revision: ${newer.revision_number}`,
-    `Against revision: ${older.revision_number}`,
-    `Filter: ${filterLabel}`,
-    `Changes only: ${changesOnly ? "On" : "Off"}`,
-    `Added in Revision ${newer.revision_number}:`,
+    categoryLabels.summaryTitle ?? "Source compare summary",
+    categoryLabels.newerRevisionLabel?.replace("{revision}", String(newer.revision_number)) ?? `Newer revision: ${newer.revision_number}`,
+    categoryLabels.olderRevisionLabel?.replace("{revision}", String(older.revision_number)) ?? `Against revision: ${older.revision_number}`,
+    (categoryLabels.filterPrefix ?? "Filter: ") + filterLabel,
+    (categoryLabels.changesOnlyPrefix ?? "Changes only: ") + (changesOnly ? categoryLabels.enabled ?? "On" : categoryLabels.disabled ?? "Off"),
+    (categoryLabels.addedPrefix ?? "Added in Revision ").replace("{revision}", String(newer.revision_number)),
     addedSection,
-    `Removed from Revision ${older.revision_number}:`,
+    (categoryLabels.removedPrefix ?? "Removed from Revision ").replace("{revision}", String(older.revision_number)),
     removedSection,
   ].join("\n");
 }
@@ -141,12 +153,13 @@ function SourceManifestPanel({
   manifest?: SourceRevision["source_manifest"];
 }) {
   const sourceManifest = manifest ?? revision.source_manifest;
+  const { messages } = useI18n();
 
   return (
     <div className="source-detail-panel">
-      {sourceCategories.map(({ key, heading }) => (
+      {sourceCategories.map(({ key }) => (
         <div key={`${revision.id}-${key}`} className="source-manifest-group">
-          <h5>{heading}</h5>
+          <h5>{messages.sourceCategories[key]}</h5>
           <ul>
             {(sourceManifest[key] ?? []).map((item) => (
               <li key={`${revision.id}-${key}-${item}`}>{item}</li>
@@ -159,6 +172,7 @@ function SourceManifestPanel({
 }
 
 export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
+  const { locale, messages } = useI18n();
   const [brief, setBrief] = useState("Create a launch deck");
   const [presetId, setPresetId] = useState("default");
   const [value, setValue] = useState("Start here");
@@ -235,13 +249,13 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   return (
     <main className="workspace">
       <header className="workspace-hero">
-        <p className="eyebrow">Workspace</p>
-        <h2>Workspace</h2>
-        <p>{projectId ? `Project ${projectId}` : "No project selected"}</p>
+        <p className="eyebrow">{messages.workspace.eyebrow}</p>
+        <h2>{messages.workspace.title}</h2>
+        <p>{projectId ? messages.workspace.projectLabel(projectId) : messages.workspace.noProjectSelected}</p>
       </header>
       <section className="workspace-section workspace-section--intro">
-        <h3>Semi-automatic mode</h3>
-        <p>This workspace prepares the prompt and rebuilds the exported deck, while you generate and export inside NotebookLM.</p>
+        <h3>{messages.workspace.introTitle}</h3>
+        <p>{messages.workspace.introDescription}</p>
       </section>
       <SourceIntakePanel
         prompt={brief}
@@ -258,7 +272,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         onVideoFilePathsChange={setVideoFilePaths}
       />
       <PromptStudio
-        presets={[{ id: "default", label: "Default", body: "Start here" }]}
+        presets={[{ id: "default", label: messages.promptStudio.defaultPreset, body: messages.promptStudio.defaultBody }]}
         selectedPresetId={presetId}
         value={value}
         onPresetChange={setPresetId}
@@ -266,9 +280,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       />
       <section className="workspace-section">
         <div className="section-copy">
-          <p className="eyebrow">Project draft</p>
-          <h3>Save project details</h3>
-          <p>Store the current brief, prompt draft, and source links with this project before handing off to NotebookLM.</p>
+          <p className="eyebrow">{messages.workspace.projectDraftEyebrow}</p>
+          <h3>{messages.workspace.projectDraftTitle}</h3>
+          <p>{messages.workspace.projectDraftDescription}</p>
         </div>
         <div className="handoff-actions">
           <button
@@ -316,15 +330,15 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               });
             }}
           >
-            Save project details
+            {messages.workspace.saveProjectDetails}
           </button>
         </div>
       </section>
       <section className="workspace-section">
         <div className="section-copy">
-          <p className="eyebrow">Source insight</p>
-          <h3>Analyze current sources</h3>
-          <p>Persist the current URLs and file paths, then generate a lightweight intake summary for this project.</p>
+          <p className="eyebrow">{messages.workspace.sourceInsightEyebrow}</p>
+          <h3>{messages.workspace.sourceInsightTitle}</h3>
+          <p>{messages.workspace.sourceInsightDescription}</p>
         </div>
         <div className="handoff-actions">
           <button
@@ -363,43 +377,43 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               });
             }}
           >
-            Analyze sources
+            {messages.workspace.analyzeSources}
           </button>
         </div>
-        {insightSummary ? <p>{insightSummary}</p> : <p>No source insight yet. Analyze the current links and file paths to persist a source snapshot.</p>}
+        {insightSummary ? <p>{insightSummary}</p> : <p>{messages.workspace.noSourceInsight}</p>}
         {sourceHistory.length > 0 ? (
           <div className="rebuild-history">
-            <h4>Recent source versions</h4>
+            <h4>{messages.workspace.recentSourceVersions}</h4>
             {sourceHistory.length > 1 ? (
               <div className="source-compare-panel">
                 <div className="section-copy">
-                  <p className="eyebrow">Compare</p>
-                  <h4>Compare revisions</h4>
-                  <p>Review any two source snapshots side by side before generating the next NotebookLM draft.</p>
+                  <p className="eyebrow">{messages.workspace.compareEyebrow}</p>
+                  <h4>{messages.workspace.compareTitle}</h4>
+                  <p>{messages.workspace.compareDescription}</p>
                 </div>
                 <div className="source-compare-controls">
                   <label>
-                    Compare newer revision
+                    {messages.workspace.compareNewerRevision}
                     <select
                       value={compareNewerRevisionId ?? ""}
                       onChange={(event) => setCompareNewerRevisionId(Number(event.target.value))}
                     >
                       {sourceHistory.map((revision) => (
                         <option key={`newer-${revision.id}`} value={revision.id}>
-                          {`Revision ${revision.revision_number}`}
+                          {messages.workspace.revisionLabel(revision.revision_number)}
                         </option>
                       ))}
                     </select>
                   </label>
                   <label>
-                    Against revision
+                    {messages.workspace.againstRevision}
                     <select
                       value={compareOlderRevisionId ?? ""}
                       onChange={(event) => setCompareOlderRevisionId(Number(event.target.value))}
                     >
                       {sourceHistory.map((revision) => (
                         <option key={`older-${revision.id}`} value={revision.id}>
-                          {`Revision ${revision.revision_number}`}
+                          {messages.workspace.revisionLabel(revision.revision_number)}
                         </option>
                       ))}
                     </select>
@@ -410,7 +424,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                       checked={showCompareChangesOnly}
                       onChange={(event) => setShowCompareChangesOnly(event.target.checked)}
                     />
-                    Show changes only
+                    {messages.workspace.showChangesOnly}
                   </label>
                 </div>
                 <div className="source-filter-chips">
@@ -419,26 +433,40 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     className={compareCategoryFilter === "all" ? "primary-action source-filter-chip" : "secondary-action source-filter-chip"}
                     onClick={() => setCompareCategoryFilter("all")}
                   >
-                    All
+                    {messages.workspace.all}
                   </button>
-                  {sourceCategories.map(({ key, heading }) => (
+                  {sourceCategories.map(({ key }) => (
                     <button
                       key={`filter-${key}`}
                       type="button"
                       className={compareCategoryFilter === key ? "primary-action source-filter-chip" : "secondary-action source-filter-chip"}
                       onClick={() => setCompareCategoryFilter(key)}
                     >
-                      {heading}
+                      {messages.sourceCategories[key]}
                     </button>
                   ))}
                 </div>
                 {(() => {
                   const newerRevision = sourceHistory.find((revision) => revision.id === compareNewerRevisionId);
                   const olderRevision = sourceHistory.find((revision) => revision.id === compareOlderRevisionId);
-                  const compareDiffs = buildSourceCompareDiffs(newerRevision, olderRevision, compareCategoryFilter);
+                  const compareLabels = {
+                    ...messages.sourceCategories,
+                    all: messages.workspace.all,
+                    summaryTitle: messages.compareSummary.title,
+                    newerRevisionLabel: locale === "zh-CN" ? "较新版本：{revision}" : "Newer revision: {revision}",
+                    olderRevisionLabel: locale === "zh-CN" ? "对比版本：{revision}" : "Against revision: {revision}",
+                    filterPrefix: locale === "zh-CN" ? "筛选：" : "Filter: ",
+                    changesOnlyPrefix: locale === "zh-CN" ? "仅变化项：" : "Changes only: ",
+                    enabled: locale === "zh-CN" ? "开" : "On",
+                    disabled: locale === "zh-CN" ? "关" : "Off",
+                    addedPrefix: locale === "zh-CN" ? "版本 {revision} 新增" : "Added in Revision {revision}",
+                    removedPrefix: locale === "zh-CN" ? "相对版本 {revision} 移除" : "Removed from Revision {revision}",
+                  } as Record<string, string>;
+                  const compareDiffs = buildSourceCompareDiffs(newerRevision, olderRevision, compareLabels, compareCategoryFilter);
                   const compareSummary = buildSourceCompareSummary({
                     newer: newerRevision,
                     older: olderRevision,
+                    categoryLabels: compareLabels,
                     categoryFilter: compareCategoryFilter,
                     changesOnly: showCompareChangesOnly,
                   });
@@ -461,12 +489,12 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                             );
                           }}
                         >
-                          Use compare summary in prompt
+                          {messages.workspace.useCompareSummaryInPrompt}
                         </button>
                       </div>
                       <div className="source-compare-groups">
                         <div className="source-compare-group">
-                          <h5>{`Added in Revision ${newerRevision.revision_number}`}</h5>
+                          <h5>{messages.workspace.addedInRevision(newerRevision.revision_number)}</h5>
                           {compareDiffs.added.length > 0 ? (
                             <ul className="source-compare-diffs">
                               {compareDiffs.added.map((diff) => (
@@ -474,11 +502,11 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                               ))}
                             </ul>
                           ) : (
-                            <p>No added sources in this compare.</p>
+                            <p>{messages.workspace.noAddedSources}</p>
                           )}
                         </div>
                         <div className="source-compare-group">
-                          <h5>{`Removed from Revision ${olderRevision.revision_number}`}</h5>
+                          <h5>{messages.workspace.removedFromRevision(olderRevision.revision_number)}</h5>
                           {compareDiffs.removed.length > 0 ? (
                             <ul className="source-compare-diffs">
                               {compareDiffs.removed.map((diff) => (
@@ -486,13 +514,13 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                               ))}
                             </ul>
                           ) : (
-                            <p>No removed sources in this compare.</p>
+                            <p>{messages.workspace.noRemovedSources}</p>
                           )}
                         </div>
                       </div>
                       <div className="source-compare-grid">
                         <div className="source-compare-column">
-                          <h5>{`Revision ${newerRevision.revision_number} snapshot`}</h5>
+                          <h5>{messages.workspace.revisionSnapshot(newerRevision.revision_number)}</h5>
                           <p>{newerRevision.insight_summary}</p>
                           <SourceManifestPanel
                             revision={newerRevision}
@@ -500,7 +528,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                           />
                         </div>
                         <div className="source-compare-column">
-                          <h5>{`Revision ${olderRevision.revision_number} snapshot`}</h5>
+                          <h5>{messages.workspace.revisionSnapshot(olderRevision.revision_number)}</h5>
                           <p>{olderRevision.insight_summary}</p>
                           <SourceManifestPanel
                             revision={olderRevision}
@@ -515,10 +543,10 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
             ) : null}
             <ul>
               {sourceHistory.map((revision, index) => {
-                const diffs = buildSourceRevisionDiffs(revision, sourceHistory[index + 1]);
+                const diffs = buildSourceRevisionDiffs(revision, sourceHistory[index + 1], messages.sourceCategories);
                 return (
                 <li key={revision.id}>
-                  <span>{`Revision ${revision.revision_number}`}</span>
+                  <span>{messages.workspace.revisionLabel(revision.revision_number)}</span>
                   <span>{revision.insight_summary}</span>
                   <button
                     className="secondary-action"
@@ -526,8 +554,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     onClick={() => setExpandedRevisionId((current) => (current === revision.id ? null : revision.id))}
                   >
                     {expandedRevisionId === revision.id
-                      ? `Hide full sources for Revision ${revision.revision_number}`
-                      : `Show full sources for Revision ${revision.revision_number}`}
+                      ? messages.workspace.hideFullSources(revision.revision_number)
+                      : messages.workspace.showFullSources(revision.revision_number)}
                   </button>
                   {diffs.length > 0 ? (
                     <ul>
@@ -548,13 +576,13 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       </section>
       <section className="workspace-section workspace-section--handoff">
         <div className="section-copy">
-          <p className="eyebrow">NotebookLM handoff</p>
-          <h3>Continue in NotebookLM</h3>
-          <p>Paste the prompt into NotebookLM and generate the deck there.</p>
-          <p>Export the deck from NotebookLM, then return here for rebuild and download.</p>
+          <p className="eyebrow">{messages.workspace.notebooklmEyebrow}</p>
+          <h3>{messages.workspace.notebooklmTitle}</h3>
+          <p>{messages.workspace.notebooklmDescription1}</p>
+          <p>{messages.workspace.notebooklmDescription2}</p>
         </div>
         <label>
-          Exported slide images
+          {messages.workspace.exportedSlideImages}
           <input
             type="file"
             multiple
@@ -563,7 +591,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
           />
         </label>
         <label>
-          OCR JSON (optional)
+          {messages.workspace.ocrJsonOptional}
           <input
             type="file"
             accept=".json,application/json"
@@ -576,7 +604,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
             type="button"
             onClick={() => window.open("https://notebooklm.google.com/", "_blank", "noopener")}
           >
-            Open NotebookLM
+            {messages.workspace.openNotebooklm}
           </button>
           <button
             className="secondary-action"
@@ -606,7 +634,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               });
             }}
           >
-            {isPending ? "Rebuilding..." : "Mark export ready"}
+            {isPending ? messages.workspace.rebuilding : messages.workspace.markExportReady}
           </button>
         </div>
       </section>

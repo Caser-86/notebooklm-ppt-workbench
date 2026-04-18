@@ -13,6 +13,8 @@ type SourceIntakePanelProps = {
   onVideoFilePathsChange: (value: string) => void;
 };
 
+import { useI18n } from "../lib/i18n";
+
 export function SourceIntakePanel({
   prompt,
   onPromptChange,
@@ -27,35 +29,37 @@ export function SourceIntakePanel({
   videoFilePaths,
   onVideoFilePathsChange,
 }: SourceIntakePanelProps) {
+  const { messages } = useI18n();
+
   return (
     <section className="workspace-section">
       <div className="section-copy">
-        <p className="eyebrow">Inputs</p>
-        <h3>Source intake</h3>
-        <p>Drop in the brief, links, and supporting material you want this deck to follow.</p>
+        <p className="eyebrow">{messages.sourceIntake.eyebrow}</p>
+        <h3>{messages.sourceIntake.title}</h3>
+        <p>{messages.sourceIntake.description}</p>
       </div>
       <label>
-        Project brief
+        {messages.sourceIntake.projectBrief}
         <textarea value={prompt} onChange={(event) => onPromptChange(event.target.value)} />
       </label>
       <label>
-        Source links
+        {messages.sourceIntake.sourceLinks}
         <textarea value={sourceLinks} onChange={(event) => onSourceLinksChange(event.target.value)} />
       </label>
       <label>
-        Source file paths
+        {messages.sourceIntake.sourceFilePaths}
         <textarea value={sourceFilePaths} onChange={(event) => onSourceFilePathsChange(event.target.value)} />
       </label>
       <label>
-        Image file paths
+        {messages.sourceIntake.imageFilePaths}
         <textarea value={imageFilePaths} onChange={(event) => onImageFilePathsChange(event.target.value)} />
       </label>
       <label>
-        Audio file paths
+        {messages.sourceIntake.audioFilePaths}
         <textarea value={audioFilePaths} onChange={(event) => onAudioFilePathsChange(event.target.value)} />
       </label>
       <label>
-        Video file paths
+        {messages.sourceIntake.videoFilePaths}
         <textarea value={videoFilePaths} onChange={(event) => onVideoFilePathsChange(event.target.value)} />
       </label>
     </section>
