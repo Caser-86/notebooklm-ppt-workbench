@@ -35,6 +35,9 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - source type is shown
    - page count is shown
    - object summary appears for imported text, image, table, or card blocks
+   - the first imported slide is selected automatically
+   - the imported slide filmstrip appears
+   - the selected slide shows a preview image
 4. Trigger rebuild from the imported revision.
 5. Confirm:
    - display clone artifact appears
@@ -42,6 +45,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - imported text stays editable
    - imported tables stay tables when available
    - imported images stay picture objects when available
+   - switching slides in the filmstrip updates the selected preview and summary
 
 ### NotebookLM handoff
 

@@ -40,6 +40,9 @@ Implemented now:
   - prompt studio
   - local PPTX import section
   - imported PPTX revision list
+  - imported slide filmstrip review
+  - selected imported slide preview
+  - per-slide object summary
   - NotebookLM handoff section
   - status section
   - rebuilt download section
@@ -70,7 +73,7 @@ The following checks were run successfully in the current environment:
 Most recent verified counts on this branch:
 
 - Agent: `76 passed`
-- Web: `11 passed`
+- Web: `12 passed`
 - Web build: success
 
 ## How To Run
@@ -143,6 +146,16 @@ This path is strongest for:
 
 For imported PPTX specifically, the editable rebuild is now more structure-aware than the first import version. The importer can preserve more original object types instead of collapsing mostly into generic text blocks.
 
+### Step E: Review imported slides before rebuild
+
+After importing a local `.pptx`, the workbench now provides:
+
+- a left-side imported slide filmstrip
+- a selected-slide preview
+- a per-slide object summary
+
+This makes it easier to sanity-check the import before triggering rebuild.
+
 ## Reconstruction Strengths
 
 The current editable reconstruction is strongest on:
@@ -165,6 +178,7 @@ The current editable reconstruction is strongest on:
   - short title
   - short description
 - imported icon-card style groupings from local PPTX
+- imported slide review with per-slide summaries before rebuild
 
 ## Reconstruction Limits
 
