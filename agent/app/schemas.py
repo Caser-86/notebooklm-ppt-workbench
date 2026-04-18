@@ -36,6 +36,8 @@ class ImportedSlideAssetRead(BaseModel):
     preview_image_path: str
     text_dump: str
     structure_json_path: str
+    object_summary: dict[str, int] = {}
+    object_summary: dict[str, int] = {}
 
 
 class ImportedPresentationRead(BaseModel):

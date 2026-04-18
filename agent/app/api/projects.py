@@ -123,12 +123,7 @@ def serialize_import_record(record: ImportedPresentation, session: Session) -> I
     )
     object_summary: dict[str, int] = {}
     for asset in slide_assets:
-        if not asset.structure_json_path:
-            continue
-        structure_path = Path(asset.structure_json_path)
-        if not structure_path.exists():
-            continue
-        for block in json.loads(structure_path.read_text(encoding="utf-8")):
+        for block in _load_structure_blocks(asset):
             content_type = block.get("content_type")
             if content_type:
                 object_summary[content_type] = object_summary.get(content_type, 0) + 1
@@ -149,10 +144,29 @@ def serialize_import_record(record: ImportedPresentation, session: Session) -> I
                 preview_image_path=import_asset_href(record.project_id, record.id or 0, Path(asset.preview_image_path).name),
                 text_dump=asset.text_dump,
                 structure_json_path=asset.structure_json_path,
+                object_summary=_build_slide_object_summary(asset),
             )
             for asset in slide_assets
         ],
     )
+
+
+def _load_structure_blocks(asset: ImportedSlideAsset) -> list[dict]:
+    if not asset.structure_json_path:
+        return []
+    structure_path = Path(asset.structure_json_path)
+    if not structure_path.exists():
+        return []
+    return json.loads(structure_path.read_text(encoding="utf-8"))
+
+
+def _build_slide_object_summary(asset: ImportedSlideAsset) -> dict[str, int]:
+    summary: dict[str, int] = {}
+    for block in _load_structure_blocks(asset):
+        content_type = block.get("content_type")
+        if content_type:
+            summary[content_type] = summary.get(content_type, 0) + 1
+    return summary
 
 
 @router.get("/projects/{project_id}/imports", response_model=list[ImportedPresentationRead])

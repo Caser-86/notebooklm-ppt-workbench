@@ -72,6 +72,7 @@ export type ImportedSlideAsset = {
   preview_image_path: string;
   text_dump: string;
   structure_json_path: string;
+  object_summary: Record<string, number>;
 };
 
 export type ImportedPresentation = {

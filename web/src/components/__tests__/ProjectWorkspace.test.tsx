@@ -111,6 +111,25 @@ describe("ProjectWorkspace", () => {
                 preview_image_path: "/artifacts/7/imports/import-11/slide-1.png",
                 text_dump: "Editable rebuild",
                 structure_json_path: "",
+                object_summary: {
+                  imported_text: 2,
+                  imported_image: 1,
+                  imported_table: 0,
+                  imported_icon_card: 0,
+                },
+              },
+              {
+                id: 2,
+                slide_index: 2,
+                preview_image_path: "/artifacts/7/imports/import-11/slide-2.png",
+                text_dump: "NotebookLM export",
+                structure_json_path: "",
+                object_summary: {
+                  imported_text: 1,
+                  imported_image: 0,
+                  imported_table: 1,
+                  imported_icon_card: 0,
+                },
               },
             ],
           }),
@@ -154,9 +173,101 @@ describe("ProjectWorkspace", () => {
     expect(await screen.findByText("demo.pptx")).toBeInTheDocument();
     expect(screen.getByText("来源类型: internal_generated")).toBeInTheDocument();
     expect(screen.getByText("页数: 1")).toBeInTheDocument();
-    expect(screen.getByText("Text: 2")).toBeInTheDocument();
-    expect(screen.getByText("Images: 1")).toBeInTheDocument();
+    expect(screen.getByText("已导入页面")).toBeInTheDocument();
+    expect(screen.getByText("当前预览：第 1 页")).toBeInTheDocument();
+    expect(screen.getAllByRole("img", { name: "第 1 页预览" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Text: 2").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Images: 1").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "从导入版本重建" })).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("defaults to the first imported slide and updates when another slide is selected", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/projects/8/imports")) {
+        return {
+          json: async () => [
+            {
+              id: 12,
+              project_id: 8,
+              source_type: "generic_pptx",
+              filename: "preview.pptx",
+              status: "ready",
+              page_count: 2,
+              error_message: "",
+              object_summary: {
+                imported_text: 3,
+                imported_image: 1,
+                imported_table: 1,
+                imported_icon_card: 0,
+              },
+              slide_assets: [
+                {
+                  id: 1,
+                  slide_index: 1,
+                  preview_image_path: "http://127.0.0.1:8000/artifacts/8/imports/import-12/slide-1.png",
+                  text_dump: "Slide 1",
+                  structure_json_path: "",
+                  object_summary: {
+                    imported_text: 2,
+                    imported_image: 1,
+                    imported_table: 0,
+                    imported_icon_card: 0,
+                  },
+                },
+                {
+                  id: 2,
+                  slide_index: 2,
+                  preview_image_path: "http://127.0.0.1:8000/artifacts/8/imports/import-12/slide-2.png",
+                  text_dump: "Slide 2",
+                  structure_json_path: "",
+                  object_summary: {
+                    imported_text: 1,
+                    imported_image: 0,
+                    imported_table: 1,
+                    imported_icon_card: 0,
+                  },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      if (url.endsWith("/projects/8")) {
+        return {
+          json: async () => ({
+            id: 8,
+            title: "Preview deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Preview brief",
+            prompt_draft: "Preview prompt",
+            source_manifest: { urls: [] },
+            insight_summary: "",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={8} />);
+
+    expect(await screen.findByText("第 1 页")).toBeInTheDocument();
+    expect(screen.getByText("当前预览：第 1 页")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "第 2 页预览 第 2 页" }));
+    expect(screen.getByText("当前预览：第 2 页")).toBeInTheDocument();
+    expect(screen.getAllByText("Tables: 1").length).toBeGreaterThan(0);
 
     vi.unstubAllGlobals();
   });

@@ -2,6 +2,8 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
 
 def test_create_project_returns_project_payload():
     client = TestClient(app)
@@ -115,3 +117,21 @@ def test_project_import_history_returns_import_records():
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+def test_project_import_history_returns_slide_object_summary(build_fixture_pptx):
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Preview Demo", "preferred_language": "zh-CN"}).json()
+    pptx_path = build_fixture_pptx("preview-demo.pptx", ["Editable rebuild"])
+
+    with pptx_path.open("rb") as handle:
+        upload_response = client.post(
+            f"/projects/{project['id']}/imports/pptx",
+            files={"file": ("preview-demo.pptx", handle, PPTX_MIME)},
+        )
+
+    assert upload_response.status_code == 201
+
+    history = client.get(f"/projects/{project['id']}/imports").json()
+
+    assert "object_summary" in history[0]["slide_assets"][0]

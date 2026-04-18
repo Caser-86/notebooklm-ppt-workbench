@@ -197,6 +197,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
   const [rebuilds, setRebuilds] = useState<RebuildVersion[]>([]);
   const [imports, setImports] = useState<ImportedPresentation[]>([]);
+  const [selectedImportId, setSelectedImportId] = useState<number | null>(null);
+  const [selectedImportedSlideIndex, setSelectedImportedSlideIndex] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -219,6 +221,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setCompareCategoryFilter("all");
       setSelectedPptx(null);
       setImports([]);
+      setSelectedImportId(null);
+      setSelectedImportedSlideIndex(null);
       return;
     }
 
@@ -251,6 +255,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
         setImports(importedPresentations);
+        setSelectedImportId(importedPresentations[0]?.id ?? null);
+        setSelectedImportedSlideIndex(importedPresentations[0]?.slide_assets[0]?.slide_index ?? null);
       });
     });
 
@@ -258,6 +264,11 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       isMounted = false;
     };
   }, [projectId]);
+
+  const activeImport = imports.find((entry) => entry.id === selectedImportId) ?? imports[0] ?? null;
+  const selectedSlide = activeImport?.slide_assets.find((slide) => slide.slide_index === selectedImportedSlideIndex)
+    ?? activeImport?.slide_assets[0]
+    ?? null;
 
   return (
     <main className="workspace">
@@ -613,6 +624,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               const imported = await uploadProjectPptx(projectId, selectedPptx);
               startTransition(() => {
                 setImports((current) => [imported, ...current]);
+                setSelectedImportId(imported.id);
+                setSelectedImportedSlideIndex(imported.slide_assets[0]?.slide_index ?? null);
                 setSelectedPptx(null);
               });
             }}
@@ -626,7 +639,16 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
             <ul>
               {imports.map((entry) => (
                 <li key={entry.id}>
-                  <span>{entry.filename}</span>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    onClick={() => {
+                      setSelectedImportId(entry.id);
+                      setSelectedImportedSlideIndex(entry.slide_assets[0]?.slide_index ?? null);
+                    }}
+                  >
+                    {entry.filename}
+                  </button>
                   <span>{messages.workspace.importSourceType}: {entry.source_type}</span>
                   <span>{messages.workspace.importPageCount}: {entry.page_count}</span>
                   <span>{entry.status}</span>
@@ -662,6 +684,41 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
           ) : (
             <p>{messages.workspace.noImportedPptx}</p>
           )}
+          {activeImport && selectedSlide ? (
+            <div className="import-review-shell">
+              <aside className="import-filmstrip">
+                <h5>{messages.workspace.importedSlidesTitle}</h5>
+                {activeImport.slide_assets.map((slide) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    className={slide.slide_index === selectedSlide.slide_index ? "filmstrip-slide is-active" : "filmstrip-slide"}
+                    onClick={() => setSelectedImportedSlideIndex(slide.slide_index)}
+                  >
+                    <img
+                      src={slide.preview_image_path}
+                      alt={messages.workspace.importedSlidePreviewAlt(slide.slide_index)}
+                    />
+                    <span>{messages.workspace.importedSlideLabel(slide.slide_index)}</span>
+                  </button>
+                ))}
+              </aside>
+              <section className="import-preview-detail">
+                <h5>{messages.workspace.selectedImportedSlide(selectedSlide.slide_index)}</h5>
+                <img
+                  className="import-preview-image"
+                  src={selectedSlide.preview_image_path}
+                  alt={messages.workspace.importedSlidePreviewAlt(selectedSlide.slide_index)}
+                />
+                <div className="import-slide-summary">
+                  <span>Text: {selectedSlide.object_summary?.imported_text ?? 0}</span>
+                  <span>Images: {selectedSlide.object_summary?.imported_image ?? 0}</span>
+                  <span>Tables: {selectedSlide.object_summary?.imported_table ?? 0}</span>
+                  <span>Cards: {selectedSlide.object_summary?.imported_icon_card ?? 0}</span>
+                </div>
+              </section>
+            </div>
+          ) : null}
         </div>
       </section>
       <section className="workspace-section workspace-section--handoff">
