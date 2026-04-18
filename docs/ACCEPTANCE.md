@@ -9,6 +9,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 1. Start the backend agent.
 2. Start the web app.
 3. Open the local workbench in the browser.
+4. Confirm the SQLite database upgrades cleanly if a local `app.db` already exists.
 
 ## Happy Path
 
@@ -65,6 +66,13 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 4. Confirm:
    - display clone artifact appears
    - editable rebuild artifact appears
+
+### Database migration
+
+1. Start the backend against a clean local SQLite database.
+2. Confirm startup succeeds.
+3. If you have an older local `app.db`, confirm startup upgrades it without schema errors.
+4. Confirm project and import APIs still work after startup.
 
 ## Recommended Real Samples
 

@@ -1,12 +1,15 @@
 from pathlib import Path
 
+from alembic import command
+from alembic.config import Config
 from sqlalchemy import text
 from sqlmodel import SQLModel, Session, create_engine
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-engine = create_engine(f"sqlite:///{DATA_DIR / 'app.db'}", connect_args={"check_same_thread": False})
+DATABASE_URL = f"sqlite:///{DATA_DIR / 'app.db'}"
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 
 def ensure_legacy_project_columns(target_engine) -> None:
@@ -33,9 +36,15 @@ def ensure_legacy_project_columns(target_engine) -> None:
                 connection.execute(text(f"ALTER TABLE project ADD COLUMN {column_name} {column_definition}"))
 
 
+def upgrade_db_to_head(target_url: str = DATABASE_URL) -> None:
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", target_url)
+    command.upgrade(config, "head")
+
+
 def init_db() -> None:
+    upgrade_db_to_head(DATABASE_URL)
     ensure_legacy_project_columns(engine)
-    SQLModel.metadata.create_all(engine)
 
 
 def get_session():

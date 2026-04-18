@@ -17,6 +17,8 @@ The current product direction is intentionally semi-automatic. The system prepar
 Implemented now:
 
 - FastAPI local agent with:
+  - Alembic-backed SQLite migration scaffold
+  - startup upgrade-to-head for the local database
   - health endpoint
   - project and job persistence
   - project-level PPTX import history
@@ -74,7 +76,7 @@ The following checks were run successfully in the current environment:
 
 Most recent verified counts on this branch:
 
-- Agent: `76 passed`
+- Agent: `88 passed`
 - Web: `12 passed`
 - Web build: success
 
@@ -223,6 +225,7 @@ Important areas:
 - `agent/app/api/`
 - `agent/app/services/`
 - `agent/app/services/reconstruct/`
+- `agent/alembic/`
 
 ### `web/`
 
