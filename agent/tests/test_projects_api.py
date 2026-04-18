@@ -105,3 +105,13 @@ def test_submit_sources_updates_project_detail_and_source_history(tmp_path):
     assert history[0]["revision_number"] == 1
     assert history[0]["source_manifest"]["urls"] == ["https://example.com/launch"]
     assert history[0]["insight_summary"] == submit_body["insight_summary"]
+
+
+def test_project_import_history_returns_import_records():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Import Demo", "preferred_language": "zh-CN"}).json()
+
+    response = client.get(f"/projects/{project['id']}/imports")
+
+    assert response.status_code == 200
+    assert response.json() == []

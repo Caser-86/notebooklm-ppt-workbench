@@ -34,3 +34,17 @@ Suggested layout:
 - `icon-card/source-manifest.json`
 - `icon-card/slide-1.png`
 - `icon-card/ocr.json`
+
+## Direct PPTX Import Samples
+
+For the local PPTX import workflow, you can also use decks from:
+
+- `samples/generated_demo/ai-history-cn-demo.pptx`
+- `samples/generated_demo/editable-rebuild-demo.pptx`
+
+Recommended validation order:
+
+1. import an internally generated PPTX first
+2. verify the imported revision appears in the workbench
+3. trigger rebuild from that imported revision
+4. then repeat with a NotebookLM-related export or a generic local `.pptx`

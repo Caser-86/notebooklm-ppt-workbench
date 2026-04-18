@@ -26,6 +26,19 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - revision compare view works
    - compare summary can be pushed into Prompt Studio
 
+### Local PPTX import
+
+1. In the same project, find the `Import PPTX` section.
+2. Upload a local `.pptx`.
+3. Confirm:
+   - an imported PPTX revision appears
+   - source type is shown
+   - page count is shown
+4. Trigger rebuild from the imported revision.
+5. Confirm:
+   - display clone artifact appears
+   - editable rebuild artifact appears
+
 ### NotebookLM handoff
 
 1. Open NotebookLM from the workbench.
@@ -57,6 +70,7 @@ Recommended sample directories in this repo:
 1. `samples/notebooklm_exports/link-heavy/`
 2. `samples/notebooklm_exports/table-heavy/`
 3. `samples/notebooklm_exports/icon-card/`
+4. `samples/generated_demo/`
 
 ## Pass Criteria
 
@@ -64,8 +78,9 @@ The build is acceptable for `V1` if all of the following are true:
 
 1. The user can reach NotebookLM from the workbench and complete the manual handoff.
 2. The app stores project details and source history.
-3. The app rebuilds exported assets into downloadable outputs.
-4. Editable rebuild preserves major content structure for the sample slides.
+3. The app can import a local `.pptx` and record it in project history.
+4. The app rebuilds exported or imported assets into downloadable outputs.
+5. Editable rebuild preserves major content structure for the sample slides.
 
 ## Known Limits
 
@@ -74,3 +89,4 @@ The build is still `V1`, so these are expected:
 1. NotebookLM login and generation are not end-to-end automated.
 2. Reconstruction is strongest on structured text, tables, and simple icon-card layouts.
 3. Complex freeform layouts may still fall back to simpler text/image reconstruction.
+4. Generic third-party `.pptx` files are best-effort in this phase and may degrade more than internal or NotebookLM-related PPTX.

@@ -21,3 +21,13 @@ def ensure_rebuild_version_dir(project_id: int, version_number: int) -> Path:
 
 def artifact_version_href(project_id: int, version_number: int, filename: str) -> str:
     return f"/artifacts/{project_id}/rebuild-{version_number:03d}/{filename}"
+
+
+def ensure_import_dir(project_id: int, import_id: int) -> Path:
+    path = ensure_project_artifact_dir(project_id) / "imports" / f"import-{import_id}"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def import_asset_href(project_id: int, import_id: int, filename: str) -> str:
+    return f"/artifacts/{project_id}/imports/import-{import_id}/{filename}"

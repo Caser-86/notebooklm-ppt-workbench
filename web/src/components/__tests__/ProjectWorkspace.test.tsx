@@ -27,6 +27,11 @@ describe("ProjectWorkspace", () => {
           json: async () => [],
         };
       }
+      if (url.includes("/imports")) {
+        return {
+          json: async () => [],
+        };
+      }
       if (url.endsWith("/projects/1")) {
         return {
           json: async () => ({
@@ -61,7 +66,7 @@ describe("ProjectWorkspace", () => {
     await user.upload(slideInput, file);
     await user.click(screen.getByRole("button", { name: "标记导出已就绪" }));
 
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
     const displayLinks = await screen.findAllByRole("link", { name: "展示版 clone" });
     const editableLinks = screen.getAllByRole("link", { name: "可编辑重建版" });
 
@@ -73,10 +78,88 @@ describe("ProjectWorkspace", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uploads a pptx import and lists imported revisions", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/projects/7/imports") && init?.method === "POST") {
+        return {
+          json: async () => ({
+            id: 11,
+            project_id: 7,
+            source_type: "internal_generated",
+            filename: "demo.pptx",
+            status: "ready",
+            page_count: 1,
+            error_message: "",
+            slide_assets: [
+              {
+                id: 1,
+                slide_index: 1,
+                preview_image_path: "/artifacts/7/imports/import-11/slide-1.png",
+                text_dump: "Editable rebuild",
+                structure_json_path: "",
+              },
+            ],
+          }),
+        };
+      }
+      if (url.includes("/projects/7/imports")) {
+        return { json: async () => [] };
+      }
+      if (url.endsWith("/projects/7")) {
+        return {
+          json: async () => ({
+            id: 7,
+            title: "Import deck",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Import brief",
+            prompt_draft: "Import prompt",
+            source_manifest: { urls: [] },
+            insight_summary: "",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={7} />);
+
+    expect((await screen.findAllByText("导入 PPTX")).length).toBeGreaterThan(0);
+    expect(screen.getByText("已导入的 PPTX 版本")).toBeInTheDocument();
+
+    const pptxInput = screen.getByLabelText("本地 PPTX 文件");
+    const file = new File(["pptx"], "demo.pptx", {
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    });
+
+    await user.upload(pptxInput, file);
+    await user.click(screen.getByRole("button", { name: "导入 PPTX" }));
+
+    expect(await screen.findByText("demo.pptx")).toBeInTheDocument();
+    expect(screen.getByText("来源类型: internal_generated")).toBeInTheDocument();
+    expect(screen.getByText("页数: 1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "从导入版本重建" })).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
+
   it("loads project detail fields from the backend", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
         return { json: async () => [] };
       }
       if (url.includes("/sources/history")) {
@@ -126,6 +209,9 @@ describe("ProjectWorkspace", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
         return { json: async () => [] };
       }
       if (url.includes("/sources/history")) {
@@ -221,6 +307,9 @@ describe("ProjectWorkspace", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
         return { json: async () => [] };
       }
       if (url.includes("/sources/history")) {
@@ -333,6 +422,9 @@ describe("ProjectWorkspace", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
         return { json: async () => [] };
       }
       if (url.includes("/sources/history")) {

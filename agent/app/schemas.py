@@ -30,6 +30,25 @@ class SourceRevisionRead(BaseModel):
     insight_summary: str
 
 
+class ImportedSlideAssetRead(BaseModel):
+    id: int
+    slide_index: int
+    preview_image_path: str
+    text_dump: str
+    structure_json_path: str
+
+
+class ImportedPresentationRead(BaseModel):
+    id: int
+    project_id: int
+    source_type: str
+    filename: str
+    status: str
+    page_count: int
+    error_message: str
+    slide_assets: list[ImportedSlideAssetRead] = []
+
+
 class JobCreate(BaseModel):
     job_type: str
     mode: str = "auto"

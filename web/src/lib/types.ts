@@ -65,3 +65,22 @@ export type SourceRevision = {
   };
   insight_summary: string;
 };
+
+export type ImportedSlideAsset = {
+  id: number;
+  slide_index: number;
+  preview_image_path: string;
+  text_dump: string;
+  structure_json_path: string;
+};
+
+export type ImportedPresentation = {
+  id: number;
+  project_id: number;
+  source_type: string;
+  filename: string;
+  status: string;
+  page_count: number;
+  error_message: string;
+  slide_assets: ImportedSlideAsset[];
+};

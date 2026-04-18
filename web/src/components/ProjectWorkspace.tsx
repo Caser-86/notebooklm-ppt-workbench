@@ -7,13 +7,16 @@ import { SourceIntakePanel } from "./SourceIntakePanel";
 import {
   analyzeProjectSources,
   fetchProjectDetail,
+  fetchProjectImports,
   fetchProjectRebuilds,
   fetchProjectSourceHistory,
+  rebuildProjectImport,
   submitManualExportRebuild,
+  uploadProjectPptx,
   updateProjectDetail,
 } from "../lib/api";
 import { useI18n } from "../lib/i18n";
-import type { DownloadArtifact, RebuildVersion, SourceRevision } from "../lib/types";
+import type { DownloadArtifact, ImportedPresentation, RebuildVersion, SourceRevision } from "../lib/types";
 
 const sourceCategories = [
   { key: "urls", diffLabel: "URL" },
@@ -189,9 +192,11 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [showCompareChangesOnly, setShowCompareChangesOnly] = useState(false);
   const [compareCategoryFilter, setCompareCategoryFilter] = useState<CompareCategoryFilter>("all");
   const [slideFiles, setSlideFiles] = useState<File[]>([]);
+  const [selectedPptx, setSelectedPptx] = useState<File | null>(null);
   const [ocrFile, setOcrFile] = useState<File | null>(null);
   const [artifacts, setArtifacts] = useState<DownloadArtifact[]>([]);
   const [rebuilds, setRebuilds] = useState<RebuildVersion[]>([]);
+  const [imports, setImports] = useState<ImportedPresentation[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -212,12 +217,19 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setCompareOlderRevisionId(null);
       setShowCompareChangesOnly(false);
       setCompareCategoryFilter("all");
+      setSelectedPptx(null);
+      setImports([]);
       return;
     }
 
     let isMounted = true;
-    void Promise.all([fetchProjectDetail(projectId), fetchProjectRebuilds(projectId), fetchProjectSourceHistory(projectId)]).then(
-      ([detail, history, sourceRevisions]) => {
+    void Promise.all([
+      fetchProjectDetail(projectId),
+      fetchProjectRebuilds(projectId),
+      fetchProjectSourceHistory(projectId),
+      fetchProjectImports(projectId),
+    ]).then(
+      ([detail, history, sourceRevisions, importedPresentations]) => {
       if (!isMounted) {
         return;
       }
@@ -238,6 +250,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setCompareCategoryFilter("all");
         setRebuilds(history);
         setArtifacts(history[0]?.artifacts ?? []);
+        setImports(importedPresentations);
       });
     });
 
@@ -573,6 +586,79 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
             </ul>
           </div>
         ) : null}
+      </section>
+      <section className="workspace-section">
+        <div className="section-copy">
+          <p className="eyebrow">{messages.workspace.importPptxEyebrow}</p>
+          <h3>{messages.workspace.importPptxTitle}</h3>
+          <p>{messages.workspace.importPptxDescription}</p>
+        </div>
+        <label>
+          {messages.workspace.importPptxFile}
+          <input
+            type="file"
+            accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            onChange={(event) => setSelectedPptx(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        <div className="handoff-actions">
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={!projectId || !selectedPptx || isPending}
+            onClick={async () => {
+              if (!projectId || !selectedPptx) {
+                return;
+              }
+              const imported = await uploadProjectPptx(projectId, selectedPptx);
+              startTransition(() => {
+                setImports((current) => [imported, ...current]);
+                setSelectedPptx(null);
+              });
+            }}
+          >
+            {messages.workspace.importPptxAction}
+          </button>
+        </div>
+        <div className="rebuild-history">
+          <h4>{messages.workspace.importedPptxRevisions}</h4>
+          {imports.length > 0 ? (
+            <ul>
+              {imports.map((entry) => (
+                <li key={entry.id}>
+                  <span>{entry.filename}</span>
+                  <span>{messages.workspace.importSourceType}: {entry.source_type}</span>
+                  <span>{messages.workspace.importPageCount}: {entry.page_count}</span>
+                  <span>{entry.status}</span>
+                  <button
+                    className="secondary-action"
+                    type="button"
+                    disabled={isPending}
+                    onClick={async () => {
+                      const payload = await rebuildProjectImport(entry.id);
+                      startTransition(() => {
+                        setArtifacts(payload.artifacts);
+                        setRebuilds((current) => [
+                          {
+                            id: payload.version_number,
+                            version_number: payload.version_number,
+                            slide_count: entry.page_count,
+                            artifacts: payload.artifacts,
+                          },
+                          ...current,
+                        ]);
+                      });
+                    }}
+                  >
+                    {messages.workspace.rebuildFromImport}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>{messages.workspace.noImportedPptx}</p>
+          )}
+        </div>
       </section>
       <section className="workspace-section workspace-section--handoff">
         <div className="section-copy">

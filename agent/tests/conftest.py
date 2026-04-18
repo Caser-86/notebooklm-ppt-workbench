@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from pptx import Presentation
 from sqlmodel import SQLModel, Session, create_engine
 
 import app.db as db_module
@@ -31,3 +32,30 @@ def isolated_test_db(tmp_path):
         app.dependency_overrides.clear()
         db_module.engine = original_engine
         db_module.get_session = original_get_session
+
+
+@pytest.fixture
+def build_fixture_pptx(tmp_path):
+    def _build(filename: str = "fixture.pptx", slides: list[str] | None = None) -> Path:
+        presentation = Presentation()
+        texts = slides or ["Editable rebuild"]
+        for index, text in enumerate(texts):
+            if index == 0:
+                slide = presentation.slides.add_slide(presentation.slide_layouts[0])
+                slide.shapes.title.text = text
+                if len(slide.placeholders) > 1:
+                    slide.placeholders[1].text = f"{text} body"
+            else:
+                slide = presentation.slides.add_slide(presentation.slide_layouts[1])
+                slide.shapes.title.text = text
+                slide.placeholders[1].text = f"{text} body"
+        if presentation.slides:
+            first_slide = presentation.slides[0]
+            # Remove the blank starter slide inserted by the default template if still empty.
+            if len(texts) > 0 and len(first_slide.shapes) == 0:
+                pass
+        output = tmp_path / filename
+        presentation.save(output)
+        return output
+
+    return _build

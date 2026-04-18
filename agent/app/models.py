@@ -46,3 +46,24 @@ class SourceRevision(SQLModel, table=True):
     source_manifest_json: str
     insight_summary: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ImportedPresentation(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    project_id: int = Field(index=True)
+    source_type: str = "generic_pptx"
+    filename: str
+    original_file_path: str = ""
+    status: str = "uploaded"
+    page_count: int = 0
+    error_message: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ImportedSlideAsset(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    import_id: int = Field(index=True)
+    slide_index: int
+    preview_image_path: str
+    text_dump: str = ""
+    structure_json_path: str = ""

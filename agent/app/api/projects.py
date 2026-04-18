@@ -7,9 +7,18 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import Project, RebuildVersion, SourceRevision
-from app.schemas import ArtifactLink, ProjectCreate, ProjectDetailRead, ProjectUpdate, RebuildVersionRead, SourceRevisionRead
-from app.services.artifacts import artifact_version_href
+from app.models import ImportedPresentation, ImportedSlideAsset, Project, RebuildVersion, SourceRevision
+from app.schemas import (
+    ArtifactLink,
+    ImportedPresentationRead,
+    ImportedSlideAssetRead,
+    ProjectCreate,
+    ProjectDetailRead,
+    ProjectUpdate,
+    RebuildVersionRead,
+    SourceRevisionRead,
+)
+from app.services.artifacts import artifact_version_href, import_asset_href
 from app.services.source_ingest import build_source_bundle, summarize_source_bundle
 
 router = APIRouter(tags=["projects"])
@@ -102,6 +111,54 @@ def list_project_rebuilds(project_id: int, session: Session = Depends(get_sessio
         )
         for rebuild in rebuilds
     ]
+
+
+def serialize_import_record(record: ImportedPresentation, session: Session) -> ImportedPresentationRead:
+    slide_assets = list(
+        session.exec(
+            select(ImportedSlideAsset)
+            .where(ImportedSlideAsset.import_id == (record.id or 0))
+            .order_by(ImportedSlideAsset.slide_index.asc())
+        )
+    )
+    return ImportedPresentationRead(
+        id=record.id or 0,
+        project_id=record.project_id,
+        source_type=record.source_type,
+        filename=record.filename,
+        status=record.status,
+        page_count=record.page_count,
+        error_message=record.error_message,
+        slide_assets=[
+            ImportedSlideAssetRead(
+                id=asset.id or 0,
+                slide_index=asset.slide_index,
+                preview_image_path=import_asset_href(record.project_id, record.id or 0, Path(asset.preview_image_path).name),
+                text_dump=asset.text_dump,
+                structure_json_path=asset.structure_json_path,
+            )
+            for asset in slide_assets
+        ],
+    )
+
+
+@router.get("/projects/{project_id}/imports", response_model=list[ImportedPresentationRead])
+def list_project_imports(project_id: int, session: Session = Depends(get_session)) -> list[ImportedPresentationRead]:
+    imports = list(
+        session.exec(
+            select(ImportedPresentation)
+            .where(ImportedPresentation.project_id == project_id)
+            .order_by(ImportedPresentation.created_at.desc())
+        )
+    )
+    return [serialize_import_record(record, session) for record in imports]
+
+
+@router.get("/imports/{import_id}", response_model=ImportedPresentationRead)
+def get_import_detail(import_id: int, session: Session = Depends(get_session)) -> ImportedPresentationRead:
+    record = session.get(ImportedPresentation, import_id)
+    assert record is not None
+    return serialize_import_record(record, session)
 
 
 @router.get("/projects/{project_id}/sources/history", response_model=list[SourceRevisionRead])

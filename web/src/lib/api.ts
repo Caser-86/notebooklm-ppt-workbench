@@ -1,4 +1,5 @@
 import type {
+  ImportedPresentation,
   LaunchJobResponse,
   ManualExportRebuildResponse,
   ProjectDetail,
@@ -71,6 +72,53 @@ export async function fetchProjectRebuilds(projectId: number): Promise<RebuildVe
 export async function fetchProjectSourceHistory(projectId: number): Promise<SourceRevision[]> {
   const response = await fetch(`${API_BASE}/projects/${projectId}/sources/history`);
   return response.json();
+}
+
+export async function fetchProjectImports(projectId: number): Promise<ImportedPresentation[]> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/imports`);
+  const payload = (await response.json()) as ImportedPresentation[];
+  return payload.map((entry) => ({
+    ...entry,
+    slide_assets: entry.slide_assets.map((asset) => ({
+      ...asset,
+      preview_image_path: asset.preview_image_path.startsWith("http")
+        ? asset.preview_image_path
+        : `${API_BASE}${asset.preview_image_path}`,
+    })),
+  }));
+}
+
+export async function uploadProjectPptx(projectId: number, file: File): Promise<ImportedPresentation> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_BASE}/projects/${projectId}/imports/pptx`, {
+    method: "POST",
+    body: formData,
+  });
+  const payload = (await response.json()) as ImportedPresentation;
+  return {
+    ...payload,
+    slide_assets: payload.slide_assets.map((asset) => ({
+      ...asset,
+      preview_image_path: asset.preview_image_path.startsWith("http")
+        ? asset.preview_image_path
+        : `${API_BASE}${asset.preview_image_path}`,
+    })),
+  };
+}
+
+export async function rebuildProjectImport(importId: number): Promise<ManualExportRebuildResponse> {
+  const response = await fetch(`${API_BASE}/imports/${importId}/rebuild`, {
+    method: "POST",
+  });
+  const payload = (await response.json()) as ManualExportRebuildResponse;
+  return {
+    ...payload,
+    artifacts: payload.artifacts.map((artifact) => ({
+      ...artifact,
+      href: artifact.href.startsWith("http") ? artifact.href : `${API_BASE}${artifact.href}`,
+    })),
+  };
 }
 
 export async function analyzeProjectSources(
