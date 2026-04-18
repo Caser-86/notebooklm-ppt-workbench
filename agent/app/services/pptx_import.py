@@ -48,6 +48,7 @@ def extract_pptx_assets(project_id: int, pptx_path: Path, import_dir: Path) -> I
         blocks = _extract_text_blocks(slide, index)
         blocks.extend(_extract_picture_blocks(slide, index, import_dir))
         blocks.extend(_extract_table_blocks(slide, index))
+        blocks.extend(_extract_chart_blocks(slide, index))
         blocks = _group_imported_icon_cards(blocks)
         text_dump = "\n".join(
             shape.text.strip()
@@ -170,6 +171,47 @@ def _extract_table_blocks(slide, slide_index: int) -> list[dict]:
         )
 
     return table_blocks
+
+
+def _extract_chart_blocks(slide, slide_index: int) -> list[dict]:
+    chart_blocks: list[dict] = []
+
+    for shape in slide.shapes:
+        if not getattr(shape, "has_chart", False):
+            continue
+
+        chart = shape.chart
+        title = ""
+        if chart.has_title:
+            title = chart.chart_title.text_frame.text
+
+        categories = [category.label for category in chart.plots[0].categories]
+        series = [
+            {
+                "name": series.name,
+                "values": list(series.values),
+            }
+            for series in chart.series
+        ]
+
+        chart_blocks.append(
+            {
+                "slide_index": slide_index,
+                "content_type": "imported_chart",
+                "chart_type": str(chart.chart_type),
+                "title": title,
+                "categories": categories,
+                "series": series,
+                "x": shape.left / EMU_PER_INCH,
+                "y": shape.top / EMU_PER_INCH,
+                "width": shape.width / EMU_PER_INCH,
+                "height": shape.height / EMU_PER_INCH,
+                "snapshot_path": "",
+                "fallback_mode": "table",
+            }
+        )
+
+    return chart_blocks
 
 
 def _group_imported_icon_cards(blocks: list[dict]) -> list[dict]:

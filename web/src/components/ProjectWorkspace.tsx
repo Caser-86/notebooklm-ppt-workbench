@@ -655,6 +655,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                   <span>Text: {entry.object_summary?.imported_text ?? 0}</span>
                   <span>Images: {entry.object_summary?.imported_image ?? 0}</span>
                   <span>Tables: {entry.object_summary?.imported_table ?? 0}</span>
+                  <span>Charts: {entry.object_summary?.imported_chart ?? 0}</span>
                   <span>Cards: {entry.object_summary?.imported_icon_card ?? 0}</span>
                   <button
                     className="secondary-action"
@@ -714,6 +715,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                   <span>Text: {selectedSlide.object_summary?.imported_text ?? 0}</span>
                   <span>Images: {selectedSlide.object_summary?.imported_image ?? 0}</span>
                   <span>Tables: {selectedSlide.object_summary?.imported_table ?? 0}</span>
+                  <span>Charts: {selectedSlide.object_summary?.imported_chart ?? 0}</span>
                   <span>Cards: {selectedSlide.object_summary?.imported_icon_card ?? 0}</span>
                 </div>
               </section>

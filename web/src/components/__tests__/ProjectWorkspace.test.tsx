@@ -102,6 +102,7 @@ describe("ProjectWorkspace", () => {
               imported_text: 2,
               imported_image: 1,
               imported_table: 0,
+              imported_chart: 1,
               imported_icon_card: 0,
             },
             slide_assets: [
@@ -115,6 +116,7 @@ describe("ProjectWorkspace", () => {
                   imported_text: 2,
                   imported_image: 1,
                   imported_table: 0,
+                  imported_chart: 1,
                   imported_icon_card: 0,
                 },
               },
@@ -128,6 +130,7 @@ describe("ProjectWorkspace", () => {
                   imported_text: 1,
                   imported_image: 0,
                   imported_table: 1,
+                  imported_chart: 0,
                   imported_icon_card: 0,
                 },
               },
@@ -178,6 +181,7 @@ describe("ProjectWorkspace", () => {
     expect(screen.getAllByRole("img", { name: "第 1 页预览" }).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Text: 2").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Images: 1").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Charts: 1").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "从导入版本重建" })).toBeInTheDocument();
 
     vi.unstubAllGlobals();
@@ -208,6 +212,7 @@ describe("ProjectWorkspace", () => {
                 imported_text: 3,
                 imported_image: 1,
                 imported_table: 1,
+                imported_chart: 1,
                 imported_icon_card: 0,
               },
               slide_assets: [
@@ -221,6 +226,7 @@ describe("ProjectWorkspace", () => {
                     imported_text: 2,
                     imported_image: 1,
                     imported_table: 0,
+                    imported_chart: 1,
                     imported_icon_card: 0,
                   },
                 },
@@ -234,6 +240,7 @@ describe("ProjectWorkspace", () => {
                     imported_text: 1,
                     imported_image: 0,
                     imported_table: 1,
+                    imported_chart: 0,
                     imported_icon_card: 0,
                   },
                 },
@@ -265,6 +272,7 @@ describe("ProjectWorkspace", () => {
 
     expect(await screen.findByText("第 1 页")).toBeInTheDocument();
     expect(screen.getByText("当前预览：第 1 页")).toBeInTheDocument();
+    expect(screen.getAllByText("Charts: 1").length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "第 2 页预览 第 2 页" }));
     expect(screen.getByText("当前预览：第 2 页")).toBeInTheDocument();
     expect(screen.getAllByText("Tables: 1").length).toBeGreaterThan(0);

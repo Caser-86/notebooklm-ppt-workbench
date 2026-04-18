@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 from pptx import Presentation
+from pptx.chart.data import ChartData
+from pptx.enum.chart import XL_CHART_TYPE
 from pptx.util import Inches
 from sqlmodel import SQLModel, Session, create_engine
 
@@ -111,6 +113,30 @@ def build_fixture_pptx_with_icon_card(tmp_path):
         body_box = slide.shapes.add_textbox(left=1800000, top=2150000, width=3000000, height=800000)
         body_box.text_frame.text = "Pilot city opened in March."
 
+        output = tmp_path / filename
+        presentation.save(output)
+        return output
+
+    return _build
+
+
+@pytest.fixture
+def build_fixture_pptx_with_chart(tmp_path):
+    def _build(filename: str = "chart-fixture.pptx") -> Path:
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[5])
+        slide.shapes.title.text = "Chart import"
+        chart_data = ChartData()
+        chart_data.categories = ["Q1", "Q2"]
+        chart_data.add_series("Revenue", (12.0, 22.0))
+        slide.shapes.add_chart(
+            XL_CHART_TYPE.COLUMN_CLUSTERED,
+            Inches(1),
+            Inches(1.6),
+            Inches(5),
+            Inches(3),
+            chart_data,
+        )
         output = tmp_path / filename
         presentation.save(output)
         return output

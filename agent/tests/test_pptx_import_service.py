@@ -56,3 +56,13 @@ def test_group_imported_icon_card_objects(build_fixture_pptx_with_icon_card, tmp
     bundle = extract_pptx_assets(project_id=1, pptx_path=pptx_path, import_dir=tmp_path)
 
     assert any(block["content_type"] == "imported_icon_card" for block in bundle.slides[0].blocks)
+
+
+def test_extract_powerpoint_chart_as_imported_chart_block(build_fixture_pptx_with_chart, tmp_path):
+    pptx_path = build_fixture_pptx_with_chart("chart-blocks.pptx")
+
+    bundle = extract_pptx_assets(project_id=1, pptx_path=pptx_path, import_dir=tmp_path)
+
+    chart_block = next(block for block in bundle.slides[0].blocks if block["content_type"] == "imported_chart")
+    assert chart_block["chart_type"]
+    assert chart_block["series"]

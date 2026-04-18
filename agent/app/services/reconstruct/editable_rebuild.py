@@ -64,6 +64,69 @@ def style_table_cell(cell, is_header: bool) -> None:
     set_table_cell_borders(cell)
 
 
+def render_table_block(slide, block: dict) -> None:
+    left, top, width, height = resolve_render_geometry(block)
+    table_shape = slide.shapes.add_table(
+        block["rows"],
+        block["cols"],
+        Inches(left),
+        Inches(top),
+        Inches(width),
+        Inches(height),
+    )
+    table = table_shape.table
+    for column_index, column_width in enumerate(block.get("column_widths", [])):
+        table.columns[column_index].width = Inches(column_width)
+    header_rows = int(block.get("header_rows", 1))
+    for row_index, row_cells in enumerate(block["cells"]):
+        for column_index, cell_data in enumerate(row_cells):
+            if cell_data.get("merged"):
+                continue
+            cell = table.cell(row_index, column_index)
+            colspan = int(cell_data.get("colspan", 1))
+            rowspan = int(cell_data.get("rowspan", 1))
+            if colspan > 1 or rowspan > 1:
+                cell.merge(table.cell(row_index + rowspan - 1, column_index + colspan - 1))
+            style_table_cell(cell, is_header=row_index < header_rows)
+            text_frame = cell.text_frame
+            text_frame.clear()
+            paragraph = text_frame.paragraphs[0]
+            run = paragraph.add_run()
+            run.text = cell_data["text"]
+            run.font.size = Pt(cell_data.get("font_size", 18))
+            run.font.bold = row_index < header_rows
+
+
+def _build_chart_fallback_table(block: dict) -> dict:
+    categories = block.get("categories", [])
+    series = block.get("series", [])
+    header_row = [{"text": "Category", "font_size": 18}]
+    header_row.extend({"text": item.get("name", "Series"), "font_size": 18} for item in series)
+
+    rows = [header_row]
+    for index, category in enumerate(categories):
+        row = [{"text": str(category), "font_size": 16}]
+        for item in series:
+            values = item.get("values", [])
+            row.append({"text": str(values[index]) if index < len(values) else "", "font_size": 16})
+        rows.append(row)
+
+    column_count = max(1, len(header_row))
+    return {
+        "slide_index": block["slide_index"],
+        "content_type": "imported_table",
+        "x": block["x"],
+        "y": block["y"] + (0.6 if block.get("title") else 0),
+        "width": block["width"],
+        "height": max(1.2, block["height"] - (0.6 if block.get("title") else 0)),
+        "rows": len(rows),
+        "cols": column_count,
+        "cells": rows,
+        "column_widths": [block["width"] / column_count] * column_count,
+        "header_rows": 1,
+    }
+
+
 def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
     presentation = Presentation()
     presentation.slide_width = Inches(13.333)
@@ -79,35 +142,25 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
         for block in slide_blocks:
             left, top, width, height = resolve_render_geometry(block)
             if block.get("content_type") in {"table", "imported_table"}:
-                table_shape = slide.shapes.add_table(
-                    block["rows"],
-                    block["cols"],
-                    Inches(left),
-                    Inches(top),
-                    Inches(width),
-                    Inches(height),
-                )
-                table = table_shape.table
-                for column_index, column_width in enumerate(block.get("column_widths", [])):
-                    table.columns[column_index].width = Inches(column_width)
-                header_rows = int(block.get("header_rows", 1))
-                for row_index, row_cells in enumerate(block["cells"]):
-                    for column_index, cell_data in enumerate(row_cells):
-                        if cell_data.get("merged"):
-                            continue
-                        cell = table.cell(row_index, column_index)
-                        colspan = int(cell_data.get("colspan", 1))
-                        rowspan = int(cell_data.get("rowspan", 1))
-                        if colspan > 1 or rowspan > 1:
-                            cell.merge(table.cell(row_index + rowspan - 1, column_index + colspan - 1))
-                        style_table_cell(cell, is_header=row_index < header_rows)
-                        text_frame = cell.text_frame
-                        text_frame.clear()
-                        paragraph = text_frame.paragraphs[0]
-                        run = paragraph.add_run()
-                        run.text = cell_data["text"]
-                        run.font.size = Pt(cell_data.get("font_size", 18))
-                        run.font.bold = row_index < header_rows
+                render_table_block(slide, block)
+                continue
+
+            if block.get("content_type") == "imported_chart":
+                if block.get("title"):
+                    title_box = slide.shapes.add_textbox(
+                        left=Inches(left),
+                        top=Inches(top),
+                        width=Inches(width),
+                        height=Inches(0.45),
+                    )
+                    title_frame = title_box.text_frame
+                    title_frame.clear()
+                    title_run = title_frame.paragraphs[0].add_run()
+                    title_run.text = block["title"]
+                    title_run.font.size = Pt(20)
+                    title_run.font.bold = True
+
+                render_table_block(slide, _build_chart_fallback_table(block))
                 continue
 
             if block.get("content_type") in {"icon_card", "imported_icon_card"}:
