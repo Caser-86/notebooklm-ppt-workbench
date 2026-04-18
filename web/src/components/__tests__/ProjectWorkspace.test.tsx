@@ -22,6 +22,9 @@ describe("ProjectWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes("/projects/1/jobs")) {
+        return { json: async () => [] };
+      }
       if (url.includes("/rebuilds")) {
         return {
           json: async () => [
@@ -85,7 +88,7 @@ describe("ProjectWorkspace", () => {
     await user.upload(slideInput, file);
     await user.click(screen.getByRole("button", { name: "标记导出已就绪" }));
 
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     const displayLinks = await screen.findAllByRole("link", { name: "展示版 clone" });
     const editableLinks = screen.getAllByRole("link", { name: "可编辑重建版" });
 
@@ -101,6 +104,9 @@ describe("ProjectWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      if (url.includes("/projects/7/jobs")) {
+        return { json: async () => [] };
+      }
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
@@ -233,6 +239,9 @@ describe("ProjectWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes("/projects/8/jobs")) {
+        return { json: async () => [] };
+      }
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
@@ -341,6 +350,9 @@ describe("ProjectWorkspace", () => {
   it("loads project detail fields from the backend", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes("/projects/3/jobs")) {
+        return { json: async () => [] };
+      }
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
@@ -393,6 +405,9 @@ describe("ProjectWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      if (url.includes("/projects/4/jobs")) {
+        return { json: async () => [] };
+      }
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
@@ -489,8 +504,35 @@ describe("ProjectWorkspace", () => {
 
   it("analyzes source inputs and shows source history", async () => {
     const user = userEvent.setup();
+    let projectDetailFetchCount = 0;
+    let sourceHistoryFetchCount = 0;
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      if (url.includes("/projects/5/jobs")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/jobs/15")) {
+        return {
+          json: async () => ({
+            id: 15,
+            project_id: 5,
+            job_type: "analyze_sources",
+            status: "succeeded",
+            result_json: {
+              revision_number: 2,
+              source_manifest: {
+                urls: ["https://example.com/launch", "https://example.com/faq"],
+                file_paths: ["D:/docs/launch.txt", "D:/docs/faq.txt"],
+                image_paths: ["D:/media/launch.png", "D:/media/gallery.png"],
+                audio_paths: ["D:/media/launch.mp3"],
+                video_paths: ["D:/media/launch.mp4", "D:/media/demo.mp4"],
+              },
+              insight_summary: "2 urls, 2 files, 2 images, 1 audio, 2 videos",
+            },
+            error_message: "",
+          }),
+        };
+      }
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }
@@ -498,21 +540,49 @@ describe("ProjectWorkspace", () => {
         return { json: async () => [] };
       }
       if (url.includes("/sources/history")) {
+        sourceHistoryFetchCount += 1;
         return {
-          json: async () => [
-            {
-              id: 1,
-              revision_number: 1,
-              source_manifest: {
-                urls: ["https://example.com/launch"],
-                file_paths: ["D:/docs/launch.txt"],
-              },
-              insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
-            },
-          ],
+          json: async () => (
+            sourceHistoryFetchCount > 1
+              ? [
+                  {
+                    id: 2,
+                    revision_number: 2,
+                    source_manifest: {
+                      urls: ["https://example.com/launch", "https://example.com/faq"],
+                      file_paths: ["D:/docs/launch.txt", "D:/docs/faq.txt"],
+                      image_paths: ["D:/media/launch.png", "D:/media/gallery.png"],
+                      audio_paths: ["D:/media/launch.mp3"],
+                      video_paths: ["D:/media/launch.mp4", "D:/media/demo.mp4"],
+                    },
+                    insight_summary: "2 urls, 2 files, 2 images, 1 audio, 2 videos",
+                  },
+                  {
+                    id: 1,
+                    revision_number: 1,
+                    source_manifest: {
+                      urls: ["https://example.com/launch"],
+                      file_paths: ["D:/docs/launch.txt"],
+                    },
+                    insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+                  },
+                ]
+              : [
+                  {
+                    id: 1,
+                    revision_number: 1,
+                    source_manifest: {
+                      urls: ["https://example.com/launch"],
+                      file_paths: ["D:/docs/launch.txt"],
+                    },
+                    insight_summary: "1 url, 1 file, 0 images, 0 audio, 0 video",
+                  },
+                ]
+          ),
         };
       }
       if (url.endsWith("/projects/5") && (!init || init.method === undefined)) {
+        projectDetailFetchCount += 1;
         return {
           json: async () => ({
             id: 5,
@@ -522,29 +592,23 @@ describe("ProjectWorkspace", () => {
             brief: "Current brief",
             prompt_draft: "Current prompt",
             source_manifest: {
-              urls: ["https://example.com/launch"],
-              file_paths: ["D:/docs/launch.txt"],
-              image_paths: ["D:/media/launch.png"],
+              urls: projectDetailFetchCount > 1 ? ["https://example.com/launch", "https://example.com/faq"] : ["https://example.com/launch"],
+              file_paths: projectDetailFetchCount > 1 ? ["D:/docs/launch.txt", "D:/docs/faq.txt"] : ["D:/docs/launch.txt"],
+              image_paths: projectDetailFetchCount > 1 ? ["D:/media/launch.png", "D:/media/gallery.png"] : ["D:/media/launch.png"],
               audio_paths: ["D:/media/launch.mp3"],
-              video_paths: ["D:/media/launch.mp4"],
+              video_paths: projectDetailFetchCount > 1 ? ["D:/media/launch.mp4", "D:/media/demo.mp4"] : ["D:/media/launch.mp4"],
             },
-            insight_summary: "1 url, 1 file, 1 image, 1 audio, 1 video",
+            insight_summary: projectDetailFetchCount > 1
+              ? "2 urls, 2 files, 2 images, 1 audio, 2 videos"
+              : "1 url, 1 file, 1 image, 1 audio, 1 video",
           }),
         };
       }
       if (url.includes("/sources") && init?.method === "POST") {
         return {
           json: async () => ({
-            project_id: 5,
-            revision_number: 2,
-            source_manifest: {
-              urls: ["https://example.com/launch", "https://example.com/faq"],
-              file_paths: ["D:/docs/launch.txt", "D:/docs/faq.txt"],
-              image_paths: ["D:/media/launch.png", "D:/media/gallery.png"],
-              audio_paths: ["D:/media/launch.mp3"],
-              video_paths: ["D:/media/launch.mp4", "D:/media/demo.mp4"],
-            },
-            insight_summary: "2 urls, 2 files, 2 images, 1 audio, 2 videos",
+            job_id: 15,
+            status: "queued",
           }),
         };
       }
@@ -606,6 +670,9 @@ describe("ProjectWorkspace", () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes("/projects/6/jobs")) {
+        return { json: async () => [] };
+      }
       if (url.includes("/rebuilds")) {
         return { json: async () => [] };
       }

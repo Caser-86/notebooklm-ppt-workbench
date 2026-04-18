@@ -3,12 +3,13 @@ from pathlib import Path
 
 from sqlmodel import Session, select
 
-from app.models import ImportedPresentation, ImportedSlideAsset, Job, RebuildVersion
+from app.models import ImportedPresentation, ImportedSlideAsset, Project, RebuildVersion, SourceRevision
 from app.services.artifacts import (
     artifact_version_href,
     ensure_import_dir,
     ensure_rebuild_version_dir,
 )
+from app.services.source_ingest import build_source_bundle, summarize_source_bundle
 from app.services.pptx_import import extract_pptx_assets
 from app.services.reconstruct.display_clone import build_display_clone
 from app.services.reconstruct.editable_rebuild import build_editable_rebuild
@@ -141,4 +142,61 @@ def handle_rebuild_import(session: Session, import_id: int) -> dict:
                 "href": artifact_version_href(imported.project_id, version_number, editable_path.name),
             },
         ],
+    }
+
+
+def handle_analyze_sources(
+    session: Session,
+    project_id: int,
+    prompt: str,
+    urls: list[str],
+    file_paths: list[str],
+    image_paths: list[str],
+    audio_paths: list[str],
+    video_paths: list[str],
+) -> dict:
+    bundle = build_source_bundle(
+        prompt=prompt,
+        urls=urls,
+        file_paths=[Path(path) for path in file_paths],
+        image_paths=[Path(path) for path in image_paths],
+        audio_paths=[Path(path) for path in audio_paths],
+        video_paths=[Path(path) for path in video_paths],
+    )
+    source_manifest = {
+        "prompt": bundle.prompt,
+        "urls": bundle.urls,
+        "file_paths": bundle.file_paths,
+        "image_paths": bundle.image_paths,
+        "audio_paths": bundle.audio_paths,
+        "video_paths": bundle.video_paths,
+    }
+    insight_summary = summarize_source_bundle(bundle)
+
+    project = session.get(Project, project_id)
+    assert project is not None
+    current_max = session.exec(
+        select(SourceRevision.revision_number)
+        .where(SourceRevision.project_id == project_id)
+        .order_by(SourceRevision.revision_number.desc())
+    ).first()
+    revision_number = (current_max or 0) + 1
+
+    project.source_manifest_json = json.dumps(source_manifest)
+    project.insight_summary = insight_summary
+    session.add(project)
+    session.add(
+        SourceRevision(
+            project_id=project_id,
+            revision_number=revision_number,
+            source_manifest_json=json.dumps(source_manifest),
+            insight_summary=insight_summary,
+        )
+    )
+    session.commit()
+
+    return {
+        "revision_number": revision_number,
+        "source_manifest": source_manifest,
+        "insight_summary": insight_summary,
     }

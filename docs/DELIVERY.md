@@ -19,6 +19,8 @@ Implemented now:
 - FastAPI local agent with:
   - Alembic-backed SQLite migration scaffold
   - startup upgrade-to-head for the local database
+  - local persistent job queue foundation
+  - worker entry point for queued tasks
   - health endpoint
   - project and job persistence
   - project-level PPTX import history
@@ -49,6 +51,7 @@ Implemented now:
   - per-slide object summary
   - NotebookLM handoff section
   - status section
+  - project job history in the status area
   - rebuilt download section
   - source revision compare and filtering
   - compare summary export into Prompt Studio
@@ -76,7 +79,7 @@ The following checks were run successfully in the current environment:
 
 Most recent verified counts on this branch:
 
-- Agent: `88 passed`
+- Agent: `92 passed`
 - Web: `12 passed`
 - Web build: success
 
@@ -87,6 +90,13 @@ Most recent verified counts on this branch:
 ```powershell
 cd agent
 python -m uvicorn app.main:app --reload
+```
+
+### 1b. Start the worker
+
+```powershell
+cd agent
+python -m app.worker
 ```
 
 ### 2. Start the web app
@@ -114,6 +124,8 @@ In the web UI:
 - enter the project brief
 - adjust the preset-based generation prompt
 - review the NotebookLM handoff instructions
+
+Some actions now queue background work rather than finishing inside the same request. The workbench reflects those states through the local job timeline.
 
 ### Step B: Continue in NotebookLM
 

@@ -7,8 +7,9 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 ## Environment
 
 1. Start the backend agent.
-2. Start the web app.
-3. Open the local workbench in the browser.
+2. Start the local worker.
+3. Start the web app.
+4. Open the local workbench in the browser.
 4. Confirm the SQLite database upgrades cleanly if a local `app.db` already exists.
 
 ## Happy Path
@@ -26,6 +27,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - source revision history appears
    - revision compare view works
    - compare summary can be pushed into Prompt Studio
+   - queued/running/succeeded task states are visible when background work is used
 
 ### Local PPTX import
 
@@ -66,6 +68,13 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 4. Confirm:
    - display clone artifact appears
    - editable rebuild artifact appears
+
+### Queue behavior
+
+1. Trigger a long-running action such as PPTX import or imported rebuild.
+2. Confirm the request returns immediately.
+3. Confirm the job status progresses through queued/running/succeeded or failed.
+4. Confirm the workbench refreshes the affected section after success.
 
 ### Database migration
 

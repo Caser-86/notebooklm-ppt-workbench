@@ -9,6 +9,7 @@ import {
   fetchJob,
   fetchProjectDetail,
   fetchProjectImports,
+  fetchProjectJobs,
   fetchProjectRebuilds,
   fetchProjectSourceHistory,
   rebuildProjectImport,
@@ -17,7 +18,7 @@ import {
   updateProjectDetail,
 } from "../lib/api";
 import { useI18n } from "../lib/i18n";
-import type { DownloadArtifact, ImportedPresentation, RebuildVersion, SourceRevision } from "../lib/types";
+import type { DownloadArtifact, ImportedPresentation, JobRead, RebuildVersion, SourceRevision } from "../lib/types";
 
 const sourceCategories = [
   { key: "urls", diffLabel: "URL" },
@@ -202,6 +203,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [selectedImportedSlideIndex, setSelectedImportedSlideIndex] = useState<number | null>(null);
   const [jobStatus, setJobStatus] = useState<string>("needs_attention");
   const [jobError, setJobError] = useState<string>("");
+  const [jobs, setJobs] = useState<JobRead[]>([]);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -228,6 +230,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setSelectedImportedSlideIndex(null);
       setJobStatus("needs_attention");
       setJobError("");
+      setJobs([]);
       return;
     }
 
@@ -237,8 +240,9 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       fetchProjectRebuilds(projectId),
       fetchProjectSourceHistory(projectId),
       fetchProjectImports(projectId),
+      fetchProjectJobs(projectId),
     ]).then(
-      ([detail, history, sourceRevisions, importedPresentations]) => {
+      ([detail, history, sourceRevisions, importedPresentations, projectJobs]) => {
       if (!isMounted) {
         return;
       }
@@ -262,6 +266,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         setImports(importedPresentations);
         setSelectedImportId(importedPresentations[0]?.id ?? null);
         setSelectedImportedSlideIndex(importedPresentations[0]?.slide_assets[0]?.slide_index ?? null);
+        setJobs(projectJobs);
       });
     });
 
@@ -391,6 +396,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               if (!projectId) {
                 return;
               }
+              setJobStatus("queued");
               const payload = await analyzeProjectSources(projectId, {
                 prompt: brief,
                 urls: sourceLinks.split("\n").map((item) => item.trim()).filter(Boolean),
@@ -399,23 +405,21 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                 audio_paths: audioFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
                 video_paths: videoFilePaths.split("\n").map((item) => item.trim()).filter(Boolean),
               });
+              const job = await pollJobUntilFinished(payload.job_id);
+              const [detail, sourceRevisions, projectJobs] = await Promise.all([
+                fetchProjectDetail(projectId),
+                fetchProjectSourceHistory(projectId),
+                fetchProjectJobs(projectId),
+              ]);
               startTransition(() => {
-                setInsightSummary(payload.insight_summary);
-                setSourceHistory((current) => {
-                  const nextHistory = [
-                    {
-                      id: payload.revision_number,
-                      revision_number: payload.revision_number,
-                      source_manifest: payload.source_manifest,
-                      insight_summary: payload.insight_summary,
-                    },
-                    ...current,
-                  ];
-                  setCompareNewerRevisionId(nextHistory[0]?.id ?? null);
-                  setCompareOlderRevisionId(nextHistory[1]?.id ?? null);
-                  return nextHistory;
-                });
-                setExpandedRevisionId(payload.revision_number);
+                setInsightSummary(detail.insight_summary || "");
+                setSourceHistory(sourceRevisions);
+                setExpandedRevisionId(sourceRevisions[0]?.id ?? null);
+                setCompareNewerRevisionId(sourceRevisions[0]?.id ?? null);
+                setCompareOlderRevisionId(sourceRevisions[1]?.id ?? null);
+                setJobStatus(job.status);
+                setJobError(job.error_message);
+                setJobs(projectJobs);
               });
             }}
           >
@@ -642,13 +646,17 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               setJobStatus("queued");
               const queued = await uploadProjectPptx(projectId, selectedPptx);
               const job = await pollJobUntilFinished(queued.job_id);
-              const refreshedImports = await fetchProjectImports(projectId);
+              const [refreshedImports, refreshedJobs] = await Promise.all([
+                fetchProjectImports(projectId),
+                fetchProjectJobs(projectId),
+              ]);
               startTransition(() => {
                 setImports(refreshedImports);
                 setSelectedImportId(refreshedImports[0]?.id ?? null);
                 setSelectedImportedSlideIndex(refreshedImports[0]?.slide_assets[0]?.slide_index ?? null);
                 setJobStatus(job.status);
                 setJobError(job.error_message);
+                setJobs(refreshedJobs);
                 setSelectedPptx(null);
               });
             }}
@@ -689,12 +697,15 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                       setJobStatus("queued");
                       const queued = await rebuildProjectImport(entry.id);
                       const job = await pollJobUntilFinished(queued.job_id);
-                      const refreshedRebuilds = projectId ? await fetchProjectRebuilds(projectId) : [];
+                      const [refreshedRebuilds, refreshedJobs] = projectId
+                        ? await Promise.all([fetchProjectRebuilds(projectId), fetchProjectJobs(projectId)])
+                        : [[], []];
                       startTransition(() => {
                         setRebuilds(refreshedRebuilds);
                         setArtifacts(refreshedRebuilds[0]?.artifacts ?? []);
                         setJobStatus(job.status);
                         setJobError(job.error_message);
+                        setJobs(refreshedJobs as JobRead[]);
                       });
                     }}
                   >
@@ -809,7 +820,11 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
           </button>
         </div>
       </section>
-      <JobTimeline status={jobStatus} attentionReason={jobStatus === "needs_attention" ? "browser_login_required" : jobError} />
+      <JobTimeline
+        status={jobStatus}
+        attentionReason={jobStatus === "needs_attention" ? "browser_login_required" : jobError}
+        jobs={jobs}
+      />
       <ArtifactGallery artifacts={artifacts} rebuilds={rebuilds} />
     </main>
   );

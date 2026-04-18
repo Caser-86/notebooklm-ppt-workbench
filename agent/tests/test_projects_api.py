@@ -96,18 +96,26 @@ def test_submit_sources_updates_project_detail_and_source_history(tmp_path):
         },
     )
 
-    assert submit_response.status_code == 200
+    assert submit_response.status_code == 202
     submit_body = submit_response.json()
-    assert submit_body["source_manifest"]["urls"] == ["https://example.com/launch"]
+    assert submit_body["status"] == "queued"
+
+    with Session(db_module.engine) as session:
+        job = session.exec(select(Job).where(Job.id == submit_body["job_id"])).first()
+        assert job is not None
+        run_job_handler(session, job)
+
+    job_result = client.get(f"/jobs/{submit_body['job_id']}").json()["result_json"]
+    assert job_result["source_manifest"]["urls"] == ["https://example.com/launch"]
     normalized_file_path = source_file.as_posix()
-    assert submit_body["source_manifest"]["file_paths"] == [normalized_file_path]
-    assert submit_body["source_manifest"]["image_paths"] == ["D:/media/launch-cover.png"]
-    assert submit_body["source_manifest"]["audio_paths"] == ["D:/media/launch-voice.mp3"]
-    assert submit_body["source_manifest"]["video_paths"] == ["D:/media/launch-demo.mp4"]
-    assert "1 url" in submit_body["insight_summary"].lower()
-    assert "1 image" in submit_body["insight_summary"].lower()
-    assert "1 audio" in submit_body["insight_summary"].lower()
-    assert "1 video" in submit_body["insight_summary"].lower()
+    assert job_result["source_manifest"]["file_paths"] == [normalized_file_path]
+    assert job_result["source_manifest"]["image_paths"] == ["D:/media/launch-cover.png"]
+    assert job_result["source_manifest"]["audio_paths"] == ["D:/media/launch-voice.mp3"]
+    assert job_result["source_manifest"]["video_paths"] == ["D:/media/launch-demo.mp4"]
+    assert "1 url" in job_result["insight_summary"].lower()
+    assert "1 image" in job_result["insight_summary"].lower()
+    assert "1 audio" in job_result["insight_summary"].lower()
+    assert "1 video" in job_result["insight_summary"].lower()
 
     detail_response = client.get(f"/projects/{project['id']}")
     detail = detail_response.json()
@@ -115,13 +123,13 @@ def test_submit_sources_updates_project_detail_and_source_history(tmp_path):
     assert detail["source_manifest"]["image_paths"] == ["D:/media/launch-cover.png"]
     assert detail["source_manifest"]["audio_paths"] == ["D:/media/launch-voice.mp3"]
     assert detail["source_manifest"]["video_paths"] == ["D:/media/launch-demo.mp4"]
-    assert detail["insight_summary"] == submit_body["insight_summary"]
+    assert detail["insight_summary"] == job_result["insight_summary"]
 
     history_response = client.get(f"/projects/{project['id']}/sources/history")
     history = history_response.json()
     assert history[0]["revision_number"] == 1
     assert history[0]["source_manifest"]["urls"] == ["https://example.com/launch"]
-    assert history[0]["insight_summary"] == submit_body["insight_summary"]
+    assert history[0]["insight_summary"] == job_result["insight_summary"]
 
 
 def test_project_import_history_returns_import_records():

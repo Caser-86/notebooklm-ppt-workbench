@@ -90,6 +90,11 @@ export async function fetchProjectImports(projectId: number): Promise<ImportedPr
   }));
 }
 
+export async function fetchProjectJobs(projectId: number): Promise<JobRead[]> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/jobs`);
+  return response.json();
+}
+
 export async function fetchJob(jobId: number): Promise<JobRead> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}`);
   return response.json();
@@ -122,17 +127,7 @@ export async function analyzeProjectSources(
     audio_paths: string[];
     video_paths: string[];
   },
-): Promise<{
-  revision_number: number;
-  source_manifest: {
-    urls: string[];
-    file_paths: string[];
-    image_paths: string[];
-    audio_paths: string[];
-    video_paths: string[];
-  };
-  insight_summary: string;
-}> {
+): Promise<JobEnqueueResponse> {
   const response = await fetch(`${API_BASE}/projects/${projectId}/sources`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

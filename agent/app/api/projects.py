@@ -7,11 +7,13 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from app.db import get_session
-from app.models import ImportedPresentation, ImportedSlideAsset, Project, RebuildVersion, SourceRevision
+from app.models import ImportedPresentation, ImportedSlideAsset, Job, Project, RebuildVersion, SourceRevision
 from app.schemas import (
     ArtifactLink,
     ImportedPresentationRead,
     ImportedSlideAssetRead,
+    JobEnqueueResponse,
+    JobRead,
     ProjectCreate,
     ProjectDetailRead,
     ProjectUpdate,
@@ -19,7 +21,7 @@ from app.schemas import (
     SourceRevisionRead,
 )
 from app.services.artifacts import artifact_version_href, import_asset_href
-from app.services.source_ingest import build_source_bundle, summarize_source_bundle
+from app.services.job_queue import enqueue_job
 
 router = APIRouter(tags=["projects"])
 
@@ -181,6 +183,24 @@ def list_project_imports(project_id: int, session: Session = Depends(get_session
     return [serialize_import_record(record, session) for record in imports]
 
 
+@router.get("/projects/{project_id}/jobs", response_model=list[JobRead])
+def list_project_jobs(project_id: int, session: Session = Depends(get_session)) -> list[JobRead]:
+    jobs = list(
+        session.exec(select(Job).where(Job.project_id == project_id).order_by(Job.created_at.desc()))
+    )
+    return [
+        JobRead(
+            id=job.id or 0,
+            project_id=job.project_id,
+            job_type=job.job_type,
+            status=job.status,
+            result_json=json.loads(job.result_json or "{}"),
+            error_message=job.error_message,
+        )
+        for job in jobs
+    ]
+
+
 @router.get("/imports/{import_id}", response_model=ImportedPresentationRead)
 def get_import_detail(import_id: int, session: Session = Depends(get_session)) -> ImportedPresentationRead:
     record = session.get(ImportedPresentation, import_id)
@@ -203,53 +223,20 @@ def list_project_source_history(project_id: int, session: Session = Depends(get_
     ]
 
 
-@router.post("/projects/{project_id}/sources")
+@router.post("/projects/{project_id}/sources", response_model=JobEnqueueResponse, status_code=status.HTTP_202_ACCEPTED)
 def submit_sources(project_id: int, payload: SourceSubmit, session: Session = Depends(get_session)):
-    bundle = build_source_bundle(
-        prompt=payload.prompt,
-        urls=payload.urls,
-        file_paths=[Path(path) for path in payload.file_paths],
-        image_paths=[Path(path) for path in payload.image_paths],
-        audio_paths=[Path(path) for path in payload.audio_paths],
-        video_paths=[Path(path) for path in payload.video_paths],
+    job = enqueue_job(
+        session,
+        project_id=project_id,
+        job_type="analyze_sources",
+        payload={
+            "prompt": payload.prompt,
+            "urls": payload.urls,
+            "file_paths": payload.file_paths,
+            "image_paths": payload.image_paths,
+            "audio_paths": payload.audio_paths,
+            "video_paths": payload.video_paths,
+        },
     )
-    project = session.get(Project, project_id)
-    assert project is not None
 
-    source_manifest = {
-        "prompt": bundle.prompt,
-        "urls": bundle.urls,
-        "file_paths": bundle.file_paths,
-        "image_paths": bundle.image_paths,
-        "audio_paths": bundle.audio_paths,
-        "video_paths": bundle.video_paths,
-    }
-    insight_summary = summarize_source_bundle(bundle)
-
-    current_max = session.exec(
-        select(SourceRevision.revision_number)
-        .where(SourceRevision.project_id == project_id)
-        .order_by(SourceRevision.revision_number.desc())
-    ).first()
-    revision_number = (current_max or 0) + 1
-
-    project.source_manifest_json = json.dumps(source_manifest)
-    project.insight_summary = insight_summary
-    project.updated_at = datetime.now(UTC)
-    session.add(project)
-    session.add(
-        SourceRevision(
-            project_id=project_id,
-            revision_number=revision_number,
-            source_manifest_json=json.dumps(source_manifest),
-            insight_summary=insight_summary,
-        )
-    )
-    session.commit()
-
-    return {
-        "project_id": project_id,
-        "revision_number": revision_number,
-        "source_manifest": source_manifest,
-        "insight_summary": insight_summary,
-    }
+    return JobEnqueueResponse(job_id=job.id or 0, status=job.status)

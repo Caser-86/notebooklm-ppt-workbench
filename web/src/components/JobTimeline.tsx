@@ -1,11 +1,12 @@
 type JobTimelineProps = {
   status: string;
   attentionReason?: string;
+  jobs?: Array<{ id: number; job_type: string; status: string }>;
 };
 
 import { useI18n } from "../lib/i18n";
 
-export function JobTimeline({ status, attentionReason }: JobTimelineProps) {
+export function JobTimeline({ status, attentionReason, jobs = [] }: JobTimelineProps) {
   const { messages } = useI18n();
   const statusLabel =
     status === "needs_attention"
@@ -40,6 +41,19 @@ export function JobTimeline({ status, attentionReason }: JobTimelineProps) {
           <button className="secondary-action" type="button">
             {messages.jobTimeline.finishInNotebooklm}
           </button>
+        ) : null}
+        {jobs.length > 0 ? (
+          <div className="rebuild-history">
+            <h4>{messages.jobTimeline.recentJobs}</h4>
+            <ul>
+              {jobs.slice(0, 5).map((job) => (
+                <li key={job.id}>
+                  <span>{job.job_type}</span>
+                  <span>{job.status}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
       </div>
     </section>
