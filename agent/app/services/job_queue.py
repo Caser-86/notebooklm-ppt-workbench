@@ -45,3 +45,25 @@ def claim_next_job(session: Session, worker_id: str) -> Job | None:
     session.commit()
     session.refresh(job)
     return job
+
+
+def mark_job_succeeded(session: Session, job: Job, result: dict) -> Job:
+    job.status = "succeeded"
+    job.result_json = json.dumps(result, ensure_ascii=False)
+    job.error_message = ""
+    job.finished_at = datetime.now(UTC)
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job
+
+
+def mark_job_failed(session: Session, job: Job, error_message: str, retryable: bool = False) -> Job:
+    job.status = "retryable" if retryable else "failed"
+    job.error_message = error_message
+    job.finished_at = datetime.now(UTC)
+    job.attempt_count += 1
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job

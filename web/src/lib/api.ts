@@ -1,5 +1,7 @@
 import type {
   ImportedPresentation,
+  JobEnqueueResponse,
+  JobRead,
   LaunchJobResponse,
   ManualExportRebuildResponse,
   ProjectDetail,
@@ -88,37 +90,26 @@ export async function fetchProjectImports(projectId: number): Promise<ImportedPr
   }));
 }
 
-export async function uploadProjectPptx(projectId: number, file: File): Promise<ImportedPresentation> {
+export async function fetchJob(jobId: number): Promise<JobRead> {
+  const response = await fetch(`${API_BASE}/jobs/${jobId}`);
+  return response.json();
+}
+
+export async function uploadProjectPptx(projectId: number, file: File): Promise<JobEnqueueResponse> {
   const formData = new FormData();
   formData.append("file", file);
   const response = await fetch(`${API_BASE}/projects/${projectId}/imports/pptx`, {
     method: "POST",
     body: formData,
   });
-  const payload = (await response.json()) as ImportedPresentation;
-  return {
-    ...payload,
-    slide_assets: payload.slide_assets.map((asset) => ({
-      ...asset,
-      preview_image_path: asset.preview_image_path.startsWith("http")
-        ? asset.preview_image_path
-        : `${API_BASE}${asset.preview_image_path}`,
-    })),
-  };
+  return response.json();
 }
 
-export async function rebuildProjectImport(importId: number): Promise<ManualExportRebuildResponse> {
+export async function rebuildProjectImport(importId: number): Promise<JobEnqueueResponse> {
   const response = await fetch(`${API_BASE}/imports/${importId}/rebuild`, {
     method: "POST",
   });
-  const payload = (await response.json()) as ManualExportRebuildResponse;
-  return {
-    ...payload,
-    artifacts: payload.artifacts.map((artifact) => ({
-      ...artifact,
-      href: artifact.href.startsWith("http") ? artifact.href : `${API_BASE}${artifact.href}`,
-    })),
-  };
+  return response.json();
 }
 
 export async function analyzeProjectSources(
@@ -170,7 +161,7 @@ export async function submitManualExportRebuild(projectId: number, formData: For
   const payload = (await response.json()) as ManualExportRebuildResponse;
   return {
     ...payload,
-    artifacts: payload.artifacts.map((artifact) => ({
+    artifacts: (payload.artifacts ?? []).map((artifact) => ({
       ...artifact,
       href: artifact.href.startsWith("http") ? artifact.href : `${API_BASE}${artifact.href}`,
     })),

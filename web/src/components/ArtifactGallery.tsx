@@ -32,8 +32,8 @@ export function ArtifactGallery({ artifacts, rebuilds = [] }: { artifacts: Artif
         <div className="rebuild-history">
           <h4>{messages.artifactGallery.recentVersions}</h4>
           <ul>
-            {rebuilds.map((rebuild) => (
-              <li key={rebuild.id}>
+            {rebuilds.map((rebuild, index) => (
+              <li key={`${rebuild.id}-${rebuild.version_number}-${index}`}>
                 <span>{messages.artifactGallery.versionLabel(rebuild.version_number)}</span>
                 {rebuild.artifacts.map((artifact) => (
                   <a key={artifact.id} href={artifact.href}>

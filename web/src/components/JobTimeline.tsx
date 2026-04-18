@@ -12,6 +12,14 @@ export function JobTimeline({ status, attentionReason }: JobTimelineProps) {
       ? messages.jobTimeline.statusNeedsAttention
       : status === "ready_to_generate"
         ? messages.jobTimeline.statusReadyToGenerate
+        : status === "queued"
+          ? messages.jobTimeline.statusQueued
+          : status === "running"
+            ? messages.jobTimeline.statusRunning
+            : status === "succeeded"
+              ? messages.jobTimeline.statusSucceeded
+              : status === "failed"
+                ? messages.jobTimeline.statusFailed
         : status;
 
   const attentionLabel =

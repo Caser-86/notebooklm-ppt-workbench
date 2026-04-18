@@ -40,6 +40,20 @@ export type LaunchJobResponse = {
   prompt: string;
 };
 
+export type JobEnqueueResponse = {
+  job_id: number;
+  status: string;
+};
+
+export type JobRead = {
+  id: number;
+  project_id: number;
+  job_type: string;
+  status: string;
+  result_json: Record<string, unknown>;
+  error_message: string;
+};
+
 export type ManualExportRebuildResponse = {
   project_id: number;
   version_number: number;

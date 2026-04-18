@@ -1,6 +1,10 @@
 from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
+import app.db as db_module
 from app.main import app
+from app.models import Job
+from app.worker import run_job_handler
 
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
@@ -24,6 +28,17 @@ def test_create_job_returns_draft_status():
 
     assert response.status_code == 201
     assert response.json()["status"] == "draft"
+
+
+def test_project_job_list_returns_created_jobs():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Queue deck", "preferred_language": "zh-CN"}).json()
+    created = client.post(f"/projects/{project['id']}/jobs", json={"job_type": "generate", "mode": "auto"}).json()
+
+    response = client.get(f"/projects/{project['id']}/jobs")
+
+    assert response.status_code == 200
+    assert any(job["id"] == created["id"] and job["job_type"] == "generate" for job in response.json())
 
 
 def test_list_projects_returns_created_projects():
@@ -130,7 +145,13 @@ def test_project_import_history_returns_slide_object_summary(build_fixture_pptx)
             files={"file": ("preview-demo.pptx", handle, PPTX_MIME)},
         )
 
-    assert upload_response.status_code == 201
+    assert upload_response.status_code == 202
+
+    job_id = upload_response.json()["job_id"]
+    with Session(db_module.engine) as session:
+        job = session.exec(select(Job).where(Job.id == job_id)).first()
+        assert job is not None
+        run_job_handler(session, job)
 
     history = client.get(f"/projects/{project['id']}/imports").json()
 

@@ -6,6 +6,7 @@ import { PromptStudio } from "./PromptStudio";
 import { SourceIntakePanel } from "./SourceIntakePanel";
 import {
   analyzeProjectSources,
+  fetchJob,
   fetchProjectDetail,
   fetchProjectImports,
   fetchProjectRebuilds,
@@ -199,6 +200,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [imports, setImports] = useState<ImportedPresentation[]>([]);
   const [selectedImportId, setSelectedImportId] = useState<number | null>(null);
   const [selectedImportedSlideIndex, setSelectedImportedSlideIndex] = useState<number | null>(null);
+  const [jobStatus, setJobStatus] = useState<string>("needs_attention");
+  const [jobError, setJobError] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -223,6 +226,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setImports([]);
       setSelectedImportId(null);
       setSelectedImportedSlideIndex(null);
+      setJobStatus("needs_attention");
+      setJobError("");
       return;
     }
 
@@ -269,6 +274,19 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const selectedSlide = activeImport?.slide_assets.find((slide) => slide.slide_index === selectedImportedSlideIndex)
     ?? activeImport?.slide_assets[0]
     ?? null;
+
+  async function pollJobUntilFinished(jobId: number) {
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      const job = await fetchJob(jobId);
+      setJobStatus(job.status);
+      setJobError(job.error_message);
+      if (job.status === "succeeded" || job.status === "failed") {
+        return job;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return await fetchJob(jobId);
+  }
 
   return (
     <main className="workspace">
@@ -621,11 +639,16 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
               if (!projectId || !selectedPptx) {
                 return;
               }
-              const imported = await uploadProjectPptx(projectId, selectedPptx);
+              setJobStatus("queued");
+              const queued = await uploadProjectPptx(projectId, selectedPptx);
+              const job = await pollJobUntilFinished(queued.job_id);
+              const refreshedImports = await fetchProjectImports(projectId);
               startTransition(() => {
-                setImports((current) => [imported, ...current]);
-                setSelectedImportId(imported.id);
-                setSelectedImportedSlideIndex(imported.slide_assets[0]?.slide_index ?? null);
+                setImports(refreshedImports);
+                setSelectedImportId(refreshedImports[0]?.id ?? null);
+                setSelectedImportedSlideIndex(refreshedImports[0]?.slide_assets[0]?.slide_index ?? null);
+                setJobStatus(job.status);
+                setJobError(job.error_message);
                 setSelectedPptx(null);
               });
             }}
@@ -663,18 +686,15 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
                     type="button"
                     disabled={isPending}
                     onClick={async () => {
-                      const payload = await rebuildProjectImport(entry.id);
+                      setJobStatus("queued");
+                      const queued = await rebuildProjectImport(entry.id);
+                      const job = await pollJobUntilFinished(queued.job_id);
+                      const refreshedRebuilds = projectId ? await fetchProjectRebuilds(projectId) : [];
                       startTransition(() => {
-                        setArtifacts(payload.artifacts);
-                        setRebuilds((current) => [
-                          {
-                            id: payload.version_number,
-                            version_number: payload.version_number,
-                            slide_count: entry.page_count,
-                            artifacts: payload.artifacts,
-                          },
-                          ...current,
-                        ]);
+                        setRebuilds(refreshedRebuilds);
+                        setArtifacts(refreshedRebuilds[0]?.artifacts ?? []);
+                        setJobStatus(job.status);
+                        setJobError(job.error_message);
                       });
                     }}
                   >
@@ -789,7 +809,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
           </button>
         </div>
       </section>
-      <JobTimeline status="needs_attention" attentionReason="browser_login_required" />
+      <JobTimeline status={jobStatus} attentionReason={jobStatus === "needs_attention" ? "browser_login_required" : jobError} />
       <ArtifactGallery artifacts={artifacts} rebuilds={rebuilds} />
     </main>
   );
