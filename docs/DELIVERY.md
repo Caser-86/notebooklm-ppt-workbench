@@ -24,6 +24,11 @@ Implemented now:
   - prompt preset service
   - NotebookLM runner state machine scaffold
   - local `.pptx` import classification and normalized slide asset extraction
+  - object-aware PPTX import for:
+    - text boxes
+    - pictures
+    - PowerPoint tables
+    - simple icon-card groupings
   - display-clone PPT reconstruction
   - editable PPT reconstruction from OCR-like blocks
   - raw OCR box table detection
@@ -64,7 +69,7 @@ The following checks were run successfully in the current environment:
 
 Most recent verified counts on this branch:
 
-- Agent: `68 passed`
+- Agent: `76 passed`
 - Web: `11 passed`
 - Web build: success
 
@@ -136,12 +141,17 @@ This path is strongest for:
 - NotebookLM-related exported PPTX
 - simpler generic local `.pptx` files on a best-effort basis
 
+For imported PPTX specifically, the editable rebuild is now more structure-aware than the first import version. The importer can preserve more original object types instead of collapsing mostly into generic text blocks.
+
 ## Reconstruction Strengths
 
 The current editable reconstruction is strongest on:
 
 - titles and paragraphs
 - bullet and list blocks
+- imported PPTX text boxes
+- imported PPTX pictures
+- imported PPTX tables
 - two-column text layouts
 - image plus caption layouts
 - structured tables, including:
@@ -154,6 +164,7 @@ The current editable reconstruction is strongest on:
   - small icon
   - short title
   - short description
+- imported icon-card style groupings from local PPTX
 
 ## Reconstruction Limits
 
@@ -164,6 +175,7 @@ The current editable reconstruction is weaker on:
 - advanced shape semantics beyond current text/image/table/icon-card recovery
 - general-purpose automation of every possible NotebookLM slide style
 - exact object-level fidelity for every third-party `.pptx`
+- full SmartArt, grouped-shape hierarchy, or theme/master parity for imported PPTX
 
 ## Important Limitation
 
@@ -223,8 +235,9 @@ It is:
 
 If feature work continues after that, the best next feature direction is:
 
-1. richer icon-card and grouped visual block recovery
-2. only then broader freeform layout recovery
+1. richer imported PPTX object recovery and metadata visualization
+2. broader icon-card and grouped visual block recovery
+3. only then broader freeform layout recovery
 
 ## Suggested Demo Narrative
 

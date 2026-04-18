@@ -46,5 +46,7 @@ Recommended validation order:
 
 1. import an internally generated PPTX first
 2. verify the imported revision appears in the workbench
-3. trigger rebuild from that imported revision
-4. then repeat with a NotebookLM-related export or a generic local `.pptx`
+3. verify the imported object summary shows meaningful counts for text, image, table, or card blocks
+4. trigger rebuild from that imported revision
+5. confirm the editable rebuild preserves those structures where expected
+6. then repeat with a NotebookLM-related export or a generic local `.pptx`

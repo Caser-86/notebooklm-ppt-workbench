@@ -34,10 +34,14 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - an imported PPTX revision appears
    - source type is shown
    - page count is shown
+   - object summary appears for imported text, image, table, or card blocks
 4. Trigger rebuild from the imported revision.
 5. Confirm:
    - display clone artifact appears
    - editable rebuild artifact appears
+   - imported text stays editable
+   - imported tables stay tables when available
+   - imported images stay picture objects when available
 
 ### NotebookLM handoff
 
@@ -81,6 +85,7 @@ The build is acceptable for `V1` if all of the following are true:
 3. The app can import a local `.pptx` and record it in project history.
 4. The app rebuilds exported or imported assets into downloadable outputs.
 5. Editable rebuild preserves major content structure for the sample slides.
+6. Imported PPTX structure is visibly better than plain text fallback for supported text, image, table, and icon-card cases.
 
 ## Known Limits
 
@@ -90,3 +95,4 @@ The build is still `V1`, so these are expected:
 2. Reconstruction is strongest on structured text, tables, and simple icon-card layouts.
 3. Complex freeform layouts may still fall back to simpler text/image reconstruction.
 4. Generic third-party `.pptx` files are best-effort in this phase and may degrade more than internal or NotebookLM-related PPTX.
+5. Imported PPTX quality is structure-first, not full visual parity with the original deck.
