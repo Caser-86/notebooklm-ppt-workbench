@@ -37,7 +37,6 @@ class ImportedSlideAssetRead(BaseModel):
     text_dump: str
     structure_json_path: str
     object_summary: dict[str, int] = {}
-    object_summary: dict[str, int] = {}
 
 
 class ImportedPresentationRead(BaseModel):
@@ -55,6 +54,20 @@ class ImportedPresentationRead(BaseModel):
 class JobCreate(BaseModel):
     job_type: str
     mode: str = "auto"
+
+
+class JobRead(BaseModel):
+    id: int
+    project_id: int
+    job_type: str
+    status: str
+    result_json: dict = {}
+    error_message: str = ""
+
+
+class JobEnqueueResponse(BaseModel):
+    job_id: int
+    status: str
 
 
 class ArtifactLink(BaseModel):

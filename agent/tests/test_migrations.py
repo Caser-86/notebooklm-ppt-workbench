@@ -30,6 +30,8 @@ def test_clean_sqlite_database_upgrades_to_head(tmp_path):
     assert "project" in inspector.get_table_names()
     project_columns = {column["name"] for column in inspector.get_columns("project")}
     assert {"brief", "prompt_draft", "source_manifest_json", "updated_at"}.issubset(project_columns)
+    job_columns = {column["name"] for column in inspector.get_columns("job")}
+    assert {"payload_json", "result_json", "attempt_count", "max_attempts", "available_at", "locked_by"}.issubset(job_columns)
 
 
 def test_legacy_sqlite_upgrades_to_head(tmp_path):
@@ -56,6 +58,8 @@ def test_legacy_sqlite_upgrades_to_head(tmp_path):
     project_columns = {column["name"] for column in inspector.get_columns("project")}
 
     assert {"brief", "prompt_draft", "source_manifest_json", "updated_at"}.issubset(project_columns)
+    job_columns = {column["name"] for column in inspector.get_columns("job")}
+    assert {"payload_json", "result_json", "attempt_count", "max_attempts", "available_at", "locked_by"}.issubset(job_columns)
 
 
 def test_startup_upgrade_helper_upgrades_database_before_use(tmp_path):

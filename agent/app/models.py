@@ -26,6 +26,16 @@ class Job(SQLModel, table=True):
     attention_reason: str = ""
     notebook_session_path: str = ""
     retry_count: int = 0
+    payload_json: str = "{}"
+    result_json: str = "{}"
+    error_message: str = ""
+    attempt_count: int = 0
+    max_attempts: int = 3
+    available_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    locked_by: str = ""
+    locked_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
