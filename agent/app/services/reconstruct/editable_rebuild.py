@@ -163,6 +163,27 @@ def build_editable_rebuild(raw_blocks: list[dict], output_path: Path) -> Path:
                 render_table_block(slide, _build_chart_fallback_table(block))
                 continue
 
+            if block.get("content_type") == "unsupported_group":
+                textbox = slide.shapes.add_textbox(
+                    left=Inches(left),
+                    top=Inches(top),
+                    width=Inches(width),
+                    height=Inches(max(height, 0.5)),
+                )
+                text_frame = textbox.text_frame
+                text_frame.clear()
+                run = text_frame.paragraphs[0].add_run()
+                unsupported_count = block.get("unsupported_child_count", 0)
+                unsupported_types = ", ".join(block.get("unsupported_types", []))
+                run.text = (
+                    f"Unsupported grouped content ({unsupported_count})"
+                    if not unsupported_types
+                    else f"Unsupported grouped content ({unsupported_count}): {unsupported_types}"
+                )
+                run.font.size = Pt(14)
+                run.font.italic = True
+                continue
+
             if block.get("content_type") in {"icon_card", "imported_icon_card"}:
                 slide.shapes.add_picture(
                     str(Path(block["icon_path"])),

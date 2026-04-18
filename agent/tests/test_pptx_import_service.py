@@ -66,3 +66,22 @@ def test_extract_powerpoint_chart_as_imported_chart_block(build_fixture_pptx_wit
     chart_block = next(block for block in bundle.slides[0].blocks if block["content_type"] == "imported_chart")
     assert chart_block["chart_type"]
     assert chart_block["series"]
+
+
+def test_extract_group_shape_emits_unsupported_group(build_fixture_pptx_with_group_shape, tmp_path):
+    pptx_path = build_fixture_pptx_with_group_shape("group-blocks.pptx")
+
+    bundle = extract_pptx_assets(project_id=1, pptx_path=pptx_path, import_dir=tmp_path)
+
+    assert any(block["content_type"] == "unsupported_group" for block in bundle.slides[0].blocks)
+
+
+def test_group_shape_promotes_supported_text_children(build_fixture_pptx_with_group_shape, tmp_path):
+    pptx_path = build_fixture_pptx_with_group_shape("group-promote.pptx")
+
+    bundle = extract_pptx_assets(project_id=1, pptx_path=pptx_path, import_dir=tmp_path)
+
+    promoted_texts = [block for block in bundle.slides[0].blocks if block["content_type"] == "imported_text"]
+
+    assert any(block["text"] == "Grouped title" for block in promoted_texts)
+    assert any(block["text"] == "Grouped body" for block in promoted_texts)

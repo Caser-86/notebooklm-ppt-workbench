@@ -30,6 +30,7 @@ Implemented now:
     - PowerPoint tables
     - simple icon-card groupings
     - chart detection with structured fallback
+    - shallow grouped-shape expansion with explicit unsupported-group fallback
   - display-clone PPT reconstruction
   - editable PPT reconstruction from OCR-like blocks
   - raw OCR box table detection
@@ -167,6 +168,7 @@ The current editable reconstruction is strongest on:
 - imported PPTX pictures
 - imported PPTX tables
 - imported PPTX chart detection with explicit fallback
+- shallow group-shape expansion with unsupported-group preservation
 - two-column text layouts
 - image plus caption layouts
 - structured tables, including:
@@ -193,6 +195,7 @@ The current editable reconstruction is weaker on:
 - exact object-level fidelity for every third-party `.pptx`
 - full SmartArt, grouped-shape hierarchy, or theme/master parity for imported PPTX
 - native editable PowerPoint chart reconstruction
+- full recursive group hierarchy recovery
 
 ## Important Limitation
 

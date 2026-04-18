@@ -122,3 +122,40 @@ def test_imported_chart_rebuild_preserves_chart_presence(build_fixture_pptx_with
     assert response.status_code == 200
     editable = Presentation(ARTIFACTS_ROOT / str(project["id"]) / "rebuild-001" / "editable-rebuild.pptx")
     assert any(shape.has_table for shape in editable.slides[0].shapes if shape.shape_type == MSO_SHAPE_TYPE.TABLE)
+
+
+def test_imported_group_counts_appear_in_import_summary(build_fixture_pptx_with_group_shape):
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Group Import", "preferred_language": "zh-CN"}).json()
+    pptx_path = build_fixture_pptx_with_group_shape("group-summary.pptx")
+
+    with pptx_path.open("rb") as handle:
+        client.post(
+            f"/projects/{project['id']}/imports/pptx",
+            files={"file": ("group-summary.pptx", handle, PPTX_MIME)},
+        )
+
+    imports = client.get(f"/projects/{project['id']}/imports").json()
+
+    assert imports[0]["object_summary"]["unsupported_group"] >= 1
+    assert imports[0]["slide_assets"][0]["object_summary"]["unsupported_group"] >= 1
+
+
+def test_unsupported_group_rebuild_preserves_group_presence(build_fixture_pptx_with_group_shape):
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Group Rebuild", "preferred_language": "zh-CN"}).json()
+    pptx_path = build_fixture_pptx_with_group_shape("group-rebuild.pptx")
+
+    with pptx_path.open("rb") as handle:
+        imported = client.post(
+            f"/projects/{project['id']}/imports/pptx",
+            files={"file": ("group-rebuild.pptx", handle, PPTX_MIME)},
+        ).json()
+
+    response = client.post(f"/imports/{imported['id']}/rebuild")
+
+    assert response.status_code == 200
+    editable = Presentation(ARTIFACTS_ROOT / str(project["id"]) / "rebuild-001" / "editable-rebuild.pptx")
+    slide_texts = [shape.text for shape in editable.slides[0].shapes if hasattr(shape, "text") and shape.text.strip()]
+
+    assert any("Unsupported grouped content" in text for text in slide_texts)

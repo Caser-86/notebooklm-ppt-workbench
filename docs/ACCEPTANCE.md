@@ -36,6 +36,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - page count is shown
    - object summary appears for imported text, image, table, or card blocks
    - chart count appears if the PPTX includes charts
+   - group count appears if the PPTX includes grouped content
    - the first imported slide is selected automatically
    - the imported slide filmstrip appears
    - the selected slide shows a preview image
@@ -47,6 +48,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
    - imported tables stay tables when available
    - imported images stay picture objects when available
    - imported charts remain represented through explicit fallback
+   - grouped content remains represented through explicit fallback when not fully supported
    - switching slides in the filmstrip updates the selected preview and summary
 
 ### NotebookLM handoff

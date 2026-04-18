@@ -4,6 +4,7 @@ import pytest
 from pptx import Presentation
 from pptx.chart.data import ChartData
 from pptx.enum.chart import XL_CHART_TYPE
+from pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
 from pptx.util import Inches
 from sqlmodel import SQLModel, Session, create_engine
 
@@ -137,6 +138,36 @@ def build_fixture_pptx_with_chart(tmp_path):
             Inches(3),
             chart_data,
         )
+        output = tmp_path / filename
+        presentation.save(output)
+        return output
+
+    return _build
+
+
+@pytest.fixture
+def build_fixture_pptx_with_group_shape(tmp_path):
+    def _build(filename: str = "group-fixture.pptx") -> Path:
+        presentation = Presentation()
+        slide = presentation.slides.add_slide(presentation.slide_layouts[5])
+        slide.shapes.title.text = "Group import"
+
+        title_box = slide.shapes.add_textbox(Inches(1), Inches(1.4), Inches(2.4), Inches(0.5))
+        title_box.text_frame.text = "Grouped title"
+
+        body_box = slide.shapes.add_textbox(Inches(1), Inches(2.0), Inches(3.0), Inches(0.7))
+        body_box.text_frame.text = "Grouped body"
+
+        unsupported_shape = slide.shapes.add_shape(
+            MSO_AUTO_SHAPE_TYPE.ROUNDED_RECTANGLE,
+            Inches(4.5),
+            Inches(1.5),
+            Inches(1.2),
+            Inches(0.8),
+        )
+
+        slide.shapes.add_group_shape([title_box, body_box, unsupported_shape])
+
         output = tmp_path / filename
         presentation.save(output)
         return output

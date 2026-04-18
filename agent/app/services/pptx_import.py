@@ -49,6 +49,7 @@ def extract_pptx_assets(project_id: int, pptx_path: Path, import_dir: Path) -> I
         blocks.extend(_extract_picture_blocks(slide, index, import_dir))
         blocks.extend(_extract_table_blocks(slide, index))
         blocks.extend(_extract_chart_blocks(slide, index))
+        blocks.extend(_extract_group_blocks(slide, index, import_dir))
         blocks = _group_imported_icon_cards(blocks)
         text_dump = "\n".join(
             shape.text.strip()
@@ -212,6 +213,139 @@ def _extract_chart_blocks(slide, slide_index: int) -> list[dict]:
         )
 
     return chart_blocks
+
+
+def _extract_group_blocks(slide, slide_index: int, import_dir: Path) -> list[dict]:
+    group_blocks: list[dict] = []
+    for shape in slide.shapes:
+        if shape.shape_type != MSO_SHAPE_TYPE.GROUP:
+            continue
+        group_blocks.extend(_expand_group_shape(shape, slide_index, import_dir))
+    return group_blocks
+
+
+def _expand_group_shape(shape, slide_index: int, import_dir: Path) -> list[dict]:
+    promoted_blocks: list[dict] = []
+    unsupported_types: list[str] = []
+
+    for child in shape.shapes:
+        child_blocks = _extract_supported_group_child(child, slide_index, import_dir)
+        if child_blocks:
+            promoted_blocks.extend(child_blocks)
+        else:
+            unsupported_types.append(str(child.shape_type))
+
+    if unsupported_types:
+        promoted_blocks.append(
+            {
+                "slide_index": slide_index,
+                "content_type": "unsupported_group",
+                "x": shape.left / EMU_PER_INCH,
+                "y": shape.top / EMU_PER_INCH,
+                "width": shape.width / EMU_PER_INCH,
+                "height": shape.height / EMU_PER_INCH,
+                "supported_child_count": len(promoted_blocks),
+                "unsupported_child_count": len(unsupported_types),
+                "unsupported_types": unsupported_types,
+                "fallback_mode": "text",
+                "snapshot_path": "",
+            }
+        )
+
+    return promoted_blocks
+
+
+def _extract_supported_group_child(child, slide_index: int, import_dir: Path) -> list[dict]:
+    if hasattr(child, "text") and child.text and child.text.strip():
+        return [_normalize_text_shape(child, slide_index)]
+    if child.shape_type == MSO_SHAPE_TYPE.PICTURE:
+        return [_normalize_picture_shape(child, slide_index, import_dir)]
+    if getattr(child, "has_table", False):
+        return [_normalize_table_shape(child, slide_index)]
+    if getattr(child, "has_chart", False):
+        return [_normalize_chart_shape(child, slide_index)]
+    return []
+
+
+def _normalize_text_shape(shape, slide_index: int) -> dict:
+    run_font = None
+    if getattr(shape, "text_frame", None) and shape.text_frame.paragraphs:
+        first_paragraph = shape.text_frame.paragraphs[0]
+        if first_paragraph.runs:
+            run_font = first_paragraph.runs[0].font
+
+    return {
+        "slide_index": slide_index,
+        "content_type": "imported_text",
+        "text": shape.text.strip(),
+        "text_role": "body",
+        "x": shape.left / EMU_PER_INCH,
+        "y": shape.top / EMU_PER_INCH,
+        "width": shape.width / EMU_PER_INCH,
+        "height": shape.height / EMU_PER_INCH,
+        "font_size": (run_font.size.pt if run_font and run_font.size else 24),
+        "bold": bool(run_font.bold) if run_font and run_font.bold is not None else False,
+        "italic": bool(run_font.italic) if run_font and run_font.italic is not None else False,
+    }
+
+
+def _normalize_picture_shape(shape, slide_index: int, import_dir: Path) -> dict:
+    suffix = Path(shape.image.filename or "group-image.png").suffix or ".png"
+    image_path = import_dir / f"group-slide-{slide_index}-{shape.shape_id}{suffix}"
+    image_path.write_bytes(shape.image.blob)
+    return {
+        "slide_index": slide_index,
+        "content_type": "imported_image",
+        "image_path": str(image_path),
+        "x": shape.left / EMU_PER_INCH,
+        "y": shape.top / EMU_PER_INCH,
+        "width": shape.width / EMU_PER_INCH,
+        "height": shape.height / EMU_PER_INCH,
+    }
+
+
+def _normalize_table_shape(shape, slide_index: int) -> dict:
+    table = shape.table
+    return {
+        "slide_index": slide_index,
+        "content_type": "imported_table",
+        "x": shape.left / EMU_PER_INCH,
+        "y": shape.top / EMU_PER_INCH,
+        "width": shape.width / EMU_PER_INCH,
+        "height": shape.height / EMU_PER_INCH,
+        "rows": len(table.rows),
+        "cols": len(table.columns),
+        "cells": [
+            [
+                {"text": cell.text, "font_size": 18}
+                for cell in row.cells
+            ]
+            for row in table.rows
+        ],
+        "column_widths": [column.width / EMU_PER_INCH for column in table.columns],
+        "header_rows": 1,
+    }
+
+
+def _normalize_chart_shape(shape, slide_index: int) -> dict:
+    chart = shape.chart
+    title = chart.chart_title.text_frame.text if chart.has_title else ""
+    categories = [category.label for category in chart.plots[0].categories]
+    series = [{"name": item.name, "values": list(item.values)} for item in chart.series]
+    return {
+        "slide_index": slide_index,
+        "content_type": "imported_chart",
+        "chart_type": str(chart.chart_type),
+        "title": title,
+        "categories": categories,
+        "series": series,
+        "x": shape.left / EMU_PER_INCH,
+        "y": shape.top / EMU_PER_INCH,
+        "width": shape.width / EMU_PER_INCH,
+        "height": shape.height / EMU_PER_INCH,
+        "snapshot_path": "",
+        "fallback_mode": "table",
+    }
 
 
 def _group_imported_icon_cards(blocks: list[dict]) -> list[dict]:
