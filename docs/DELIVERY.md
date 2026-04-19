@@ -53,6 +53,7 @@ Implemented now:
   - status section
   - project job history in the status area
   - failed job details with manual retry
+  - full task drawer with failed-only filtering
   - rebuilt download section
   - source revision compare and filtering
   - compare summary export into Prompt Studio
@@ -81,7 +82,7 @@ The following checks were run successfully in the current environment:
 Most recent verified counts on this branch:
 
 - Agent: `93 passed`
-- Web: `15 passed`
+- Web: `16 passed`
 - Web build: success
 
 ## How To Run

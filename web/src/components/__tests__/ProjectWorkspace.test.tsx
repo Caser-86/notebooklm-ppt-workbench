@@ -809,11 +809,185 @@ describe("ProjectWorkspace", () => {
 
     render(<ProjectWorkspace projectId={9} />);
 
-    expect(await screen.findByText(/Source analysis timed out/, { selector: "p" })).toBeInTheDocument();
+    expect((await screen.findAllByText(/Source analysis timed out/, { selector: "p" })).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "重试" }));
 
     expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/jobs/21/retry", expect.objectContaining({ method: "POST" }));
     expect((await screen.findAllByText("https://example.com/retried")).length).toBeGreaterThan(0);
+
+    vi.unstubAllGlobals();
+  });
+
+  it("opens the job drawer, filters failed jobs, and retries from the drawer", async () => {
+    const user = userEvent.setup();
+    let projectJobsFetchCount = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/projects/10/jobs")) {
+        projectJobsFetchCount += 1;
+        return {
+          json: async () => (
+            projectJobsFetchCount > 1
+              ? [
+                  {
+                    id: 31,
+                    project_id: 10,
+                    job_type: "import_pptx",
+                    status: "succeeded",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:10:00Z",
+                  },
+                  {
+                    id: 32,
+                    project_id: 10,
+                    job_type: "rebuild_import",
+                    status: "running",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:11:00Z",
+                  },
+                  {
+                    id: 33,
+                    project_id: 10,
+                    job_type: "analyze_sources",
+                    status: "failed",
+                    result_json: {},
+                    error_message: "Drawer retry failure",
+                    created_at: "2026-04-19T01:12:00Z",
+                  },
+                  {
+                    id: 34,
+                    project_id: 10,
+                    job_type: "analyze_sources",
+                    status: "succeeded",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:13:00Z",
+                  },
+                ]
+              : [
+                  {
+                    id: 31,
+                    project_id: 10,
+                    job_type: "import_pptx",
+                    status: "succeeded",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:10:00Z",
+                  },
+                  {
+                    id: 32,
+                    project_id: 10,
+                    job_type: "rebuild_import",
+                    status: "running",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:11:00Z",
+                  },
+                  {
+                    id: 33,
+                    project_id: 10,
+                    job_type: "analyze_sources",
+                    status: "failed",
+                    result_json: {},
+                    error_message: "Drawer retry failure",
+                    created_at: "2026-04-19T01:12:00Z",
+                  },
+                ]
+          ),
+        };
+      }
+      if (url.includes("/jobs/34")) {
+        return {
+          json: async () => ({
+            id: 34,
+            project_id: 10,
+            job_type: "analyze_sources",
+            status: "succeeded",
+            result_json: {
+              revision_number: 2,
+              source_manifest: { urls: ["https://example.com/drawer-retried"] },
+              insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+            },
+            error_message: "",
+            created_at: "2026-04-19T01:13:00Z",
+          }),
+        };
+      }
+      if (url.includes("/jobs/33/retry") && init?.method === "POST") {
+        return {
+          json: async () => ({
+            job_id: 34,
+            status: "queued",
+          }),
+        };
+      }
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return {
+          json: async () => [
+            {
+              id: 2,
+              revision_number: 2,
+              source_manifest: {
+                urls: ["https://example.com/drawer-retried"],
+              },
+              insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+            },
+            {
+              id: 1,
+              revision_number: 1,
+              source_manifest: {
+                urls: ["https://example.com/start"],
+              },
+              insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+            },
+          ],
+        };
+      }
+      if (url.endsWith("/projects/10")) {
+        return {
+          json: async () => ({
+            id: 10,
+            title: "Drawer project",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Drawer brief",
+            prompt_draft: "Drawer prompt",
+            source_manifest: {
+              urls: ["https://example.com/drawer-retried"],
+            },
+            insight_summary: "1 url, 0 files, 0 images, 0 audio, 0 video",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={10} />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部任务" }));
+    expect(screen.getByText("任务队列")).toBeInTheDocument();
+    const drawer = screen.getByText("任务队列").closest(".job-drawer") as HTMLElement;
+    const drawerQueries = within(drawer);
+    expect(drawerQueries.getAllByText(/Drawer retry failure/, { selector: "p" }).length).toBeGreaterThan(0);
+
+    await user.click(drawerQueries.getByRole("button", { name: "仅失败任务" }));
+    expect(drawerQueries.queryByText("import_pptx")).not.toBeInTheDocument();
+    expect(drawerQueries.getByText("analyze_sources")).toBeInTheDocument();
+
+    await user.click(drawerQueries.getByRole("button", { name: "重试" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/jobs/33/retry", expect.objectContaining({ method: "POST" }));
+    expect((await screen.findAllByText("https://example.com/drawer-retried")).length).toBeGreaterThan(0);
 
     vi.unstubAllGlobals();
   });

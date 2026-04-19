@@ -227,6 +227,48 @@ body {
   gap: 0.75rem;
 }
 
+.job-drawer {
+  position: fixed;
+  top: 0;
+  right: -28rem;
+  width: min(28rem, 100vw);
+  height: 100vh;
+  padding: 1.5rem;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 1rem;
+  background: rgba(248, 249, 252, 0.98);
+  border-left: 1px solid rgba(23, 32, 51, 0.12);
+  box-shadow: -12px 0 32px rgba(23, 32, 51, 0.12);
+  transition: right 180ms ease;
+  z-index: 20;
+}
+
+.job-drawer.is-open {
+  right: 0;
+}
+
+.job-drawer__header,
+.job-drawer__filters,
+.job-drawer__meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.job-drawer__list {
+  overflow-y: auto;
+}
+
+.job-drawer__item {
+  padding: 0.9rem 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(23, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .status-pill {
   display: inline-flex;
   width: fit-content;

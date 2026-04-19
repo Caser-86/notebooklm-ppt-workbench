@@ -76,6 +76,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 3. Confirm the job status progresses through queued/running/succeeded or failed.
 4. Confirm the workbench refreshes the affected section after success.
 5. If a job fails, confirm the error message is visible and the manual retry action enqueues a new job.
+6. Confirm the full task drawer opens, shows the complete project job list, and supports failed-only filtering.
 
 ### Database migration
 

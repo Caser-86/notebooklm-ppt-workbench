@@ -1,6 +1,7 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { ArtifactGallery } from "./ArtifactGallery";
+import { JobDrawer } from "./JobDrawer";
 import { JobTimeline } from "./JobTimeline";
 import { PromptStudio } from "./PromptStudio";
 import { SourceIntakePanel } from "./SourceIntakePanel";
@@ -205,6 +206,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
   const [jobStatus, setJobStatus] = useState<string>("needs_attention");
   const [jobError, setJobError] = useState<string>("");
   const [jobs, setJobs] = useState<JobRead[]>([]);
+  const [isJobDrawerOpen, setIsJobDrawerOpen] = useState(false);
+  const [showFailedJobsOnly, setShowFailedJobsOnly] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -232,6 +235,8 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
       setJobStatus("needs_attention");
       setJobError("");
       setJobs([]);
+      setIsJobDrawerOpen(false);
+      setShowFailedJobsOnly(false);
       return;
     }
 
@@ -898,6 +903,15 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         status={jobStatus}
         attentionReason={jobStatus === "needs_attention" ? "browser_login_required" : jobError}
         jobs={jobs}
+        onRetry={handleRetryJob}
+        onViewAllJobs={() => setIsJobDrawerOpen(true)}
+      />
+      <JobDrawer
+        open={isJobDrawerOpen}
+        jobs={jobs}
+        failedOnly={showFailedJobsOnly}
+        onClose={() => setIsJobDrawerOpen(false)}
+        onToggleFailedOnly={() => setShowFailedJobsOnly((current) => !current)}
         onRetry={handleRetryJob}
       />
       <ArtifactGallery artifacts={artifacts} rebuilds={rebuilds} />

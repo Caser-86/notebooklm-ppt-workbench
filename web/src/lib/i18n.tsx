@@ -115,6 +115,11 @@ const messages = {
       failedReason: "失败原因",
       browserLoginRequired: "请登录 Google，并在 NotebookLM 中完成这一步。",
       finishInNotebooklm: "我已在 NotebookLM 中完成",
+      viewAllJobs: "查看全部任务",
+      drawerTitle: "任务队列",
+      failedOnly: "仅失败任务",
+      allJobs: "全部任务",
+      close: "关闭",
     },
     sourceCategories: {
       urls: "链接",
@@ -243,6 +248,11 @@ const messages = {
       failedReason: "Failure reason",
       browserLoginRequired: "Sign in to Google and finish this step in NotebookLM.",
       finishInNotebooklm: "I finished this in NotebookLM",
+      viewAllJobs: "View all jobs",
+      drawerTitle: "Task queue",
+      failedOnly: "Failed only",
+      allJobs: "All",
+      close: "Close",
     },
     sourceCategories: {
       urls: "URLs",

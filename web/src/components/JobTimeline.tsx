@@ -6,9 +6,10 @@ type JobTimelineProps = {
   attentionReason?: string;
   jobs?: JobRead[];
   onRetry?: (jobId: number) => void;
+  onViewAllJobs?: () => void;
 };
 
-export function JobTimeline({ status, attentionReason, jobs = [], onRetry }: JobTimelineProps) {
+export function JobTimeline({ status, attentionReason, jobs = [], onRetry, onViewAllJobs }: JobTimelineProps) {
   const { locale, messages } = useI18n();
   const statusLabel =
     status === "needs_attention"
@@ -54,7 +55,14 @@ export function JobTimeline({ status, attentionReason, jobs = [], onRetry }: Job
         ) : null}
         {jobs.length > 0 ? (
           <div className="rebuild-history">
-            <h4>{messages.jobTimeline.recentJobs}</h4>
+            <div className="handoff-actions">
+              <h4>{messages.jobTimeline.recentJobs}</h4>
+              {onViewAllJobs ? (
+                <button className="secondary-action" type="button" onClick={onViewAllJobs}>
+                  {messages.jobTimeline.viewAllJobs}
+                </button>
+              ) : null}
+            </div>
             <ul>
               {jobs.slice(0, 10).map((job) => (
                 <li key={job.id}>
