@@ -60,6 +60,9 @@ Implemented now:
   - source revision compare and filtering
   - compare summary export into Prompt Studio
 - acceptance and regression scaffolding
+- one-click launcher scripts:
+  - `start-workbench.bat`
+  - `scripts/launch_workbench.ps1`
 
 ## Verified Locally
 
@@ -68,6 +71,7 @@ The following checks were run successfully in the current environment:
 - Agent tests: `python -m pytest -q`
 - Web tests: `npm test -- --run`
 - Web production build: `npm run build`
+- Launcher script tests: `Invoke-Pester scripts/launch_workbench.Tests.ps1`
 - FastAPI startup and `/health` response
 - Python dependency import checks for:
   - `fastapi`
@@ -86,6 +90,7 @@ Most recent verified counts on this branch:
 - Agent: `95 passed`
 - Web: `18 passed`
 - Web build: success
+- Launcher script tests: `2 passed`
 
 ## How To Run
 
@@ -118,6 +123,16 @@ Use the local URL printed by Vite, typically:
 ```text
 http://127.0.0.1:5173/
 ```
+
+### Optional: one-click start
+
+Double-click:
+
+```text
+start-workbench.bat
+```
+
+The launcher checks commands, dependencies, and ports first. It stops with explicit install instructions when prerequisites are missing.
 
 ## How To Use The Current Semi-Automatic Flow
 

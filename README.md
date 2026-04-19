@@ -66,6 +66,28 @@ This repository is currently a `semi-automatic` system:
 
 ## Run locally
 
+### One-click start
+
+Double-click:
+
+```text
+start-workbench.bat
+```
+
+The launcher will:
+
+1. check for `python`, `node`, and `npm`
+2. verify backend imports by testing `agent/app`
+3. verify `web/node_modules` exists
+4. check that ports `8000` and `5174` are free
+5. start:
+   - the agent
+   - the worker
+   - the web app
+6. open the local workbench in your browser
+
+If something required is missing, the launcher stops and prints the exact install command to run instead of installing anything automatically.
+
 ### Agent
 
 ```powershell
