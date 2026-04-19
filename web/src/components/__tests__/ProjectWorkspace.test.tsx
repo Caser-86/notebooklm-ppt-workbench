@@ -1101,6 +1101,101 @@ describe("ProjectWorkspace", () => {
     vi.unstubAllGlobals();
   });
 
+  it("clears a terminal job from the drawer and refreshes the list", async () => {
+    const user = userEvent.setup();
+    let projectJobsFetchCount = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/projects/12/jobs")) {
+        projectJobsFetchCount += 1;
+        return {
+          json: async () => (
+            projectJobsFetchCount > 1
+              ? [
+                  {
+                    id: 52,
+                    project_id: 12,
+                    job_type: "rebuild_import",
+                    status: "running",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:31:00Z",
+                  },
+                ]
+              : [
+                  {
+                    id: 51,
+                    project_id: 12,
+                    job_type: "import_pptx",
+                    status: "succeeded",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:30:00Z",
+                  },
+                  {
+                    id: 52,
+                    project_id: 12,
+                    job_type: "rebuild_import",
+                    status: "running",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:31:00Z",
+                  },
+                ]
+          ),
+        };
+      }
+      if (url.endsWith("/jobs/51") && init?.method === "DELETE") {
+        return {
+          ok: true,
+          status: 204,
+          json: async () => ({}),
+        };
+      }
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return { json: async () => [] };
+      }
+      if (url.endsWith("/projects/12")) {
+        return {
+          json: async () => ({
+            id: 12,
+            title: "Cleanup project",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Cleanup brief",
+            prompt_draft: "Cleanup prompt",
+            source_manifest: { urls: [] },
+            insight_summary: "",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={12} />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部任务" }));
+    const drawer = screen.getByText("任务队列").closest(".job-drawer") as HTMLElement;
+    const drawerQueries = within(drawer);
+
+    expect(drawerQueries.getByRole("button", { name: "清理" })).toBeInTheDocument();
+    await user.click(drawerQueries.getByRole("button", { name: "清理" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/jobs/51", expect.objectContaining({ method: "DELETE" }));
+    expect(drawerQueries.queryByText("import_pptx")).not.toBeInTheDocument();
+    expect(drawerQueries.getByText("rebuild_import")).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
+
   it("compares two source revisions side by side", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {

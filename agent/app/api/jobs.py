@@ -136,6 +136,18 @@ def cancel_job(job_id: int, session: Session = Depends(get_session)) -> JobRead:
     )
 
 
+@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_job(job_id: int, session: Session = Depends(get_session)) -> None:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    if job.status not in {"succeeded", "failed", "cancelled"}:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only terminal jobs can be deleted")
+
+    session.delete(job)
+    session.commit()
+
+
 @router.post("/projects/{project_id}/imports/pptx", response_model=JobEnqueueResponse, status_code=status.HTTP_202_ACCEPTED)
 async def upload_pptx_import(
     project_id: int,

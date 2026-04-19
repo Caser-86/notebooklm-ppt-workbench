@@ -78,6 +78,7 @@ Use this checklist to verify the current `V1` honestly supports the intended sem
 5. If a job fails, confirm the error message is visible and the manual retry action enqueues a new job.
 6. Confirm the full task drawer opens, shows the complete project job list, and supports failed-only filtering.
 7. Confirm a queued job can be cancelled from the task drawer and refreshes to `cancelled`.
+8. Confirm a terminal job can be removed from the task drawer and disappears from the refreshed list.
 
 ### Database migration
 

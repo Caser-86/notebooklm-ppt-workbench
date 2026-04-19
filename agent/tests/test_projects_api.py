@@ -131,6 +131,53 @@ def test_cancel_non_queued_job_returns_conflict():
     assert response.status_code == 409
 
 
+def test_delete_terminal_job_removes_job_record():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Cleanup deck", "preferred_language": "zh-CN"}).json()
+
+    with Session(db_module.engine) as session:
+        finished_job = Job(
+            project_id=project["id"],
+            job_type="import_pptx",
+            status="succeeded",
+            payload_json='{"file_path":"D:/deck.pptx","filename":"deck.pptx"}',
+            result_json="{}",
+            error_message="",
+        )
+        session.add(finished_job)
+        session.commit()
+        session.refresh(finished_job)
+
+    response = client.delete(f"/jobs/{finished_job.id}")
+
+    assert response.status_code == 204
+
+    with Session(db_module.engine) as session:
+        assert session.get(Job, finished_job.id) is None
+
+
+def test_delete_non_terminal_job_returns_conflict():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Cleanup conflict", "preferred_language": "zh-CN"}).json()
+
+    with Session(db_module.engine) as session:
+        queued_job = Job(
+            project_id=project["id"],
+            job_type="import_pptx",
+            status="queued",
+            payload_json='{"file_path":"D:/deck.pptx","filename":"deck.pptx"}',
+            result_json="{}",
+            error_message="",
+        )
+        session.add(queued_job)
+        session.commit()
+        session.refresh(queued_job)
+
+    response = client.delete(f"/jobs/{queued_job.id}")
+
+    assert response.status_code == 409
+
+
 def test_list_projects_returns_created_projects():
     client = TestClient(app)
     created = client.post("/projects", json={"title": "History deck", "preferred_language": "zh-CN"}).json()

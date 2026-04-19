@@ -15,6 +15,7 @@ import {
   fetchProjectSourceHistory,
   rebuildProjectImport,
   cancelJob,
+  deleteJob,
   retryJob,
   submitManualExportRebuild,
   uploadProjectPptx,
@@ -383,6 +384,18 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
     startTransition(() => {
       setJobStatus(cancelledJob.status);
       setJobError(cancelledJob.error_message);
+      setJobs(projectJobs);
+    });
+  }
+
+  async function handleDeleteJob(jobId: number) {
+    if (!projectId) {
+      return;
+    }
+
+    await deleteJob(jobId);
+    const projectJobs = await fetchProjectJobs(projectId);
+    startTransition(() => {
       setJobs(projectJobs);
     });
   }
@@ -929,6 +942,7 @@ export function ProjectWorkspace({ projectId }: { projectId: number | null }) {
         onToggleFailedOnly={() => setShowFailedJobsOnly((current) => !current)}
         onRetry={handleRetryJob}
         onCancel={handleCancelJob}
+        onDelete={handleDeleteJob}
       />
       <ArtifactGallery artifacts={artifacts} rebuilds={rebuilds} />
     </main>

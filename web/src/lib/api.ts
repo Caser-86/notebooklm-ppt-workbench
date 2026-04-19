@@ -114,6 +114,12 @@ export async function cancelJob(jobId: number): Promise<JobRead> {
   return response.json();
 }
 
+export async function deleteJob(jobId: number): Promise<void> {
+  await fetch(`${API_BASE}/jobs/${jobId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function uploadProjectPptx(projectId: number, file: File): Promise<JobEnqueueResponse> {
   const formData = new FormData();
   formData.append("file", file);
