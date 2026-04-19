@@ -24,6 +24,8 @@ export function JobTimeline({ status, attentionReason, jobs = [], onRetry, onVie
               ? messages.jobTimeline.statusSucceeded
               : status === "failed"
                 ? messages.jobTimeline.statusFailed
+                : status === "cancelled"
+                  ? messages.jobTimeline.statusCancelled
                 : status;
 
   const attentionLabel =

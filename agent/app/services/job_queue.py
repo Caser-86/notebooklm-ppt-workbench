@@ -67,3 +67,12 @@ def mark_job_failed(session: Session, job: Job, error_message: str, retryable: b
     session.commit()
     session.refresh(job)
     return job
+
+
+def mark_job_cancelled(session: Session, job: Job) -> Job:
+    job.status = "cancelled"
+    job.finished_at = datetime.now(UTC)
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+    return job

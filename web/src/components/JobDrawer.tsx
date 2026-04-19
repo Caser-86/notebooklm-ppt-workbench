@@ -10,6 +10,7 @@ type JobDrawerProps = {
   onClose: () => void;
   onToggleFailedOnly: () => void;
   onRetry?: (jobId: number) => void;
+  onCancel?: (jobId: number) => void;
 };
 
 export function JobDrawer({
@@ -19,6 +20,7 @@ export function JobDrawer({
   onClose,
   onToggleFailedOnly,
   onRetry,
+  onCancel,
 }: JobDrawerProps) {
   const { locale, messages } = useI18n();
 
@@ -76,6 +78,11 @@ export function JobDrawer({
               {job.status === "failed" && onRetry ? (
                 <button className="secondary-action" type="button" onClick={() => onRetry(job.id)}>
                   {messages.jobTimeline.retry}
+                </button>
+              ) : null}
+              {job.status === "queued" && onCancel ? (
+                <button className="secondary-action" type="button" onClick={() => onCancel(job.id)}>
+                  {messages.jobTimeline.cancel}
                 </button>
               ) : null}
             </li>

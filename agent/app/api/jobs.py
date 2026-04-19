@@ -18,7 +18,7 @@ from app.services.artifacts import (
 from app.services.reconstruct.editable_rebuild import build_editable_rebuild
 from app.services.reconstruct.display_clone import build_display_clone
 from app.schemas import ImportedPresentationRead, JobCreate, JobEnqueueResponse, JobRead
-from app.services.job_queue import enqueue_job
+from app.services.job_queue import enqueue_job, mark_job_cancelled
 from app.services.notebooklm import run_generation
 from app.services.pptx_import import extract_pptx_assets
 from app.services.prompts import build_generation_prompt, get_prompt_presets
@@ -114,6 +114,26 @@ def retry_job(job_id: int, session: Session = Depends(get_session)) -> JobEnqueu
         payload=json.loads(job.payload_json or "{}"),
     )
     return JobEnqueueResponse(job_id=retried_job.id or 0, status=retried_job.status)
+
+
+@router.post("/jobs/{job_id}/cancel", response_model=JobRead)
+def cancel_job(job_id: int, session: Session = Depends(get_session)) -> JobRead:
+    job = session.get(Job, job_id)
+    if job is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    if job.status != "queued":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Only queued jobs can be cancelled")
+
+    cancelled_job = mark_job_cancelled(session, job)
+    return JobRead(
+        id=cancelled_job.id or 0,
+        project_id=cancelled_job.project_id,
+        job_type=cancelled_job.job_type,
+        status=cancelled_job.status,
+        result_json=json.loads(cancelled_job.result_json or "{}"),
+        error_message=cancelled_job.error_message,
+        created_at=cancelled_job.created_at,
+    )
 
 
 @router.post("/projects/{project_id}/imports/pptx", response_model=JobEnqueueResponse, status_code=status.HTTP_202_ACCEPTED)

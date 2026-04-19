@@ -79,6 +79,58 @@ def test_retry_failed_job_enqueues_new_job():
         assert json.loads(retried_job.payload_json) == json.loads(failed_job.payload_json)
 
 
+def test_cancel_queued_job_marks_job_cancelled():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Cancel deck", "preferred_language": "zh-CN"}).json()
+
+    with Session(db_module.engine) as session:
+        queued_job = Job(
+            project_id=project["id"],
+            job_type="import_pptx",
+            status="queued",
+            payload_json='{"file_path":"D:/deck.pptx","filename":"deck.pptx"}',
+            result_json="{}",
+            error_message="",
+        )
+        session.add(queued_job)
+        session.commit()
+        session.refresh(queued_job)
+
+    response = client.post(f"/jobs/{queued_job.id}/cancel")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == queued_job.id
+    assert body["status"] == "cancelled"
+
+    with Session(db_module.engine) as session:
+        cancelled_job = session.get(Job, queued_job.id)
+        assert cancelled_job is not None
+        assert cancelled_job.status == "cancelled"
+
+
+def test_cancel_non_queued_job_returns_conflict():
+    client = TestClient(app)
+    project = client.post("/projects", json={"title": "Cancel conflict", "preferred_language": "zh-CN"}).json()
+
+    with Session(db_module.engine) as session:
+        running_job = Job(
+            project_id=project["id"],
+            job_type="rebuild_import",
+            status="running",
+            payload_json='{"import_id":1}',
+            result_json="{}",
+            error_message="",
+        )
+        session.add(running_job)
+        session.commit()
+        session.refresh(running_job)
+
+    response = client.post(f"/jobs/{running_job.id}/cancel")
+
+    assert response.status_code == 409
+
+
 def test_list_projects_returns_created_projects():
     client = TestClient(app)
     created = client.post("/projects", json={"title": "History deck", "preferred_language": "zh-CN"}).json()

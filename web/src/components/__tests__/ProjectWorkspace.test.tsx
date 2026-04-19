@@ -992,6 +992,115 @@ describe("ProjectWorkspace", () => {
     vi.unstubAllGlobals();
   });
 
+  it("cancels a queued job from the drawer and refreshes the list", async () => {
+    const user = userEvent.setup();
+    let projectJobsFetchCount = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/projects/11/jobs")) {
+        projectJobsFetchCount += 1;
+        return {
+          json: async () => (
+            projectJobsFetchCount > 1
+              ? [
+                  {
+                    id: 41,
+                    project_id: 11,
+                    job_type: "import_pptx",
+                    status: "cancelled",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:20:00Z",
+                  },
+                  {
+                    id: 42,
+                    project_id: 11,
+                    job_type: "rebuild_import",
+                    status: "running",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:21:00Z",
+                  },
+                ]
+              : [
+                  {
+                    id: 41,
+                    project_id: 11,
+                    job_type: "import_pptx",
+                    status: "queued",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:20:00Z",
+                  },
+                  {
+                    id: 42,
+                    project_id: 11,
+                    job_type: "rebuild_import",
+                    status: "running",
+                    result_json: {},
+                    error_message: "",
+                    created_at: "2026-04-19T01:21:00Z",
+                  },
+                ]
+          ),
+        };
+      }
+      if (url.includes("/jobs/41/cancel") && init?.method === "POST") {
+        return {
+          json: async () => ({
+            id: 41,
+            project_id: 11,
+            job_type: "import_pptx",
+            status: "cancelled",
+            result_json: {},
+            error_message: "",
+            created_at: "2026-04-19T01:20:00Z",
+          }),
+        };
+      }
+      if (url.includes("/rebuilds")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/imports")) {
+        return { json: async () => [] };
+      }
+      if (url.includes("/sources/history")) {
+        return { json: async () => [] };
+      }
+      if (url.endsWith("/projects/11")) {
+        return {
+          json: async () => ({
+            id: 11,
+            title: "Cancel project",
+            preferred_language: "zh-CN",
+            preferred_style: "default",
+            brief: "Cancel brief",
+            prompt_draft: "Cancel prompt",
+            source_manifest: { urls: [] },
+            insight_summary: "",
+          }),
+        };
+      }
+      return { json: async () => [] };
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ProjectWorkspace projectId={11} />);
+
+    await user.click(await screen.findByRole("button", { name: "查看全部任务" }));
+    const drawer = screen.getByText("任务队列").closest(".job-drawer") as HTMLElement;
+    const drawerQueries = within(drawer);
+
+    expect(drawerQueries.getByRole("button", { name: "取消" })).toBeInTheDocument();
+    await user.click(drawerQueries.getByRole("button", { name: "取消" }));
+
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/jobs/41/cancel", expect.objectContaining({ method: "POST" }));
+    expect(await drawerQueries.findByText("cancelled")).toBeInTheDocument();
+
+    vi.unstubAllGlobals();
+  });
+
   it("compares two source revisions side by side", async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
